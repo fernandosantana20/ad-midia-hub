@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v34-ajuste-de-escala-adicionar-remover-voluntarios';
+const CACHE_NAME = 'ad-midia-hub-cache-v35-ajustar-quantidade-voluntarios-escala';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

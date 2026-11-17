@@ -138,6 +138,24 @@
         </div>
 
         <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5 flex items-center justify-between">
+            <span>Quantidade de Voluntários na Escala (Vagas)</span>
+            <span class="text-[10px] text-slate-400 font-normal">Padrão: 15 vagas (ou personalize)</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <input
+              id="sched-target-volunteers"
+              type="number"
+              min="1"
+              max="50"
+              value="15"
+              placeholder="15"
+              class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-400" />
+            <span class="text-xs text-slate-400 font-bold shrink-0">vagas</span>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Dress Code (Roupa da Equipe)</label>
           <input
             id="sched-dress"

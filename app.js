@@ -556,7 +556,31 @@ function logoutGmail() {
 // ============================================================================
 
 function getRoleById(roleId) {
-  return state.roles.find(r => r.id === roleId) || {
+  const found = state.roles.find(r => r.id === roleId);
+  if (found) return found;
+
+  const extraTitles = {
+    extra_apoio: { name: 'Apoio Geral de Mídia', shortName: 'Apoio Mídia', icon: 'user-check', badgeClass: 'bg-teal-500/20 text-teal-300 border-teal-500/40' },
+    extra_camera: { name: 'Cinegrafista Adicional', shortName: 'Câm. Extra', icon: 'video', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    extra_foto: { name: 'Fotógrafo Adicional', shortName: 'Foto Extra', icon: 'camera', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    extra_social: { name: 'Social Media / Cobertura', shortName: 'Social Extra', icon: 'share-2', badgeClass: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40' },
+    extra_intercom: { name: 'Operador de Intercom / Áudio', shortName: 'Intercom', icon: 'headphones', badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' }
+  };
+
+  const extra = extraTitles[roleId];
+  if (extra) {
+    return {
+      id: roleId,
+      name: extra.name,
+      shortName: extra.shortName,
+      category: 'Apoio & Extras',
+      icon: extra.icon,
+      badgeClass: extra.badgeClass,
+      station: 'Produção / Geral'
+    };
+  }
+
+  return {
     id: roleId,
     name: roleId,
     shortName: roleId,
@@ -565,6 +589,34 @@ function getRoleById(roleId) {
     badgeClass: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
     station: 'Templo'
   };
+}
+
+function getScheduleTargetPositions(sched) {
+  if (!sched) return 0;
+  if (typeof sched.targetVolunteers === 'number' && sched.targetVolunteers > 0) {
+    return sched.targetVolunteers;
+  }
+  if (Array.isArray(sched.activeRoleIds) && sched.activeRoleIds.length > 0) {
+    return sched.activeRoleIds.length;
+  }
+  return state.roles.length;
+}
+
+function updateScheduleTargetVolunteers(scheduleId, newTarget) {
+  const sched = state.schedules.find(s => s.id === scheduleId);
+  if (!sched) return;
+
+  const targetNum = parseInt(newTarget, 10);
+  if (isNaN(targetNum) || targetNum < 1) {
+    showToast('Informe uma quantidade válida de voluntários (mínimo 1).', 'rose');
+    return;
+  }
+
+  sched.targetVolunteers = targetNum;
+  saveData();
+  renderApp();
+  renderAdjustScheduleModalContent(scheduleId);
+  showToast(`Meta da escala ajustada para ${targetNum} voluntários!`, 'emerald');
 }
 
 function getRoleTypeLabel(roleType) {
@@ -2641,7 +2693,7 @@ function renderVolunteersRolesStoryboard() {
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Funções</span>
           </div>
           <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-amber-500/30 text-center">
-            <span class="text-lg font-display font-extrabold text-amber-300 block leading-none">${totalAssigned}/${totalRoles}</span>
+            <span class="text-lg font-display font-extrabold text-amber-300 block leading-none">${totalAssigned}/${getScheduleTargetPositions(selectedSched)}</span>
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Escalados</span>
           </div>
           <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-emerald-500/30 text-center">
@@ -4562,7 +4614,8 @@ function applyScheduleTemplate(templateKey) {
       callTime: '17:15',
       startTime: '18:00',
       dressCode: 'All Black (Preto Total) + Crachá Mídia',
-      notes: 'Chegada 45 min antes para testes de áudio, bateria de câmeras e transmissão ao vivo.'
+      notes: 'Chegada 45 min antes para testes de áudio, bateria de câmeras e transmissão ao vivo.',
+      targetVolunteers: 15
     },
     terca: {
       title: 'Culto de Ensino & Doutrina',
@@ -4570,7 +4623,8 @@ function applyScheduleTemplate(templateKey) {
       callTime: '18:45',
       startTime: '19:30',
       dressCode: 'Camisa Mídia ou Social Escuro',
-      notes: 'Atenção aos slides e passagens bíblicas na projeção e na transmissão online.'
+      notes: 'Atenção aos slides e passagens bíblicas na projeção e na transmissão online.',
+      targetVolunteers: 8
     },
     quinta: {
       title: 'Culto de Vitória & Campanha',
@@ -4578,7 +4632,8 @@ function applyScheduleTemplate(templateKey) {
       callTime: '18:45',
       startTime: '19:30',
       dressCode: 'All Black (Preto Total) + Crachá Mídia',
-      notes: 'Cobertura de oração e testemunhos. Foco nas câmeras dinâmicas e fotos.'
+      notes: 'Cobertura de oração e testemunhos. Foco nas câmeras dinâmicas e fotos.',
+      targetVolunteers: 8
     },
     sabado: {
       title: 'Culto Conectados — Jovens UMAD',
@@ -4586,7 +4641,8 @@ function applyScheduleTemplate(templateKey) {
       callTime: '18:30',
       startTime: '19:30',
       dressCode: 'Camisa Mídia ou All Black Jovem',
-      notes: 'Transmissão dinâmica, captação para Reels/Stories em tempo real e fotos no hall.'
+      notes: 'Transmissão dinâmica, captação para Reels/Stories em tempo real e fotos no hall.',
+      targetVolunteers: 12
     },
     santaceia: {
       title: 'Santa Ceia Geral do Senhor',
@@ -4594,7 +4650,8 @@ function applyScheduleTemplate(templateKey) {
       callTime: '17:00',
       startTime: '18:00',
       dressCode: 'Traje Social Completo + Crachá Oficial',
-      notes: 'Culto solene com alta audiência. Checagem prévia de gravação em 4K e redundância.'
+      notes: 'Culto solene com alta audiência. Checagem prévia de gravação em 4K e redundância.',
+      targetVolunteers: 15
     }
   };
 
@@ -4607,6 +4664,8 @@ function applyScheduleTemplate(templateKey) {
   if (startInput) startInput.value = tpl.startTime;
   if (dressInput) dressInput.value = tpl.dressCode;
   if (notesInput) notesInput.value = tpl.notes;
+  const targetInp = document.getElementById('sched-target-volunteers');
+  if (targetInp) targetInp.value = tpl.targetVolunteers || 15;
 
   showToast(`⚡ Modelo "${tpl.title}" aplicado!`, 'emerald');
 }
@@ -4666,6 +4725,8 @@ function openNewScheduleModal() {
   document.getElementById('sched-start').value = '18:00';
   document.getElementById('sched-dress').value = 'All Black (Preto Total) + Crachá';
   document.getElementById('sched-notes').value = '';
+  const targetInp = document.getElementById('sched-target-volunteers');
+  if (targetInp) targetInp.value = '15';
   modal.classList.remove('hidden');
 }
 
@@ -4716,10 +4777,11 @@ function renderAdjustScheduleModalContent(scheduleId) {
   const d = formatDateBR(sched.date);
   const assignments = Array.isArray(sched.assignments) ? sched.assignments : [];
   const confirmedCount = assignments.filter(a => a.status === 'confirmed').length;
+  const targetPositions = getScheduleTargetPositions(sched);
 
   if (titleEl) titleEl.textContent = `Ajustar Escala: ${sched.title}`;
   if (subtitleEl) subtitleEl.textContent = `${d.full} de ${d.year} • Início: ${sched.startTime} • Local: ${sched.location}`;
-  if (countEl) countEl.textContent = `${assignments.length} de ${state.roles.length} vagas preenchidas (${confirmedCount} confirmados)`;
+  if (countEl) countEl.textContent = `${assignments.length} de ${targetPositions} voluntários escalados (${confirmedCount} confirmados)`;
 
   // Member options
   const assignedMemberIds = new Set(assignments.map(a => a.memberId));
@@ -4731,7 +4793,117 @@ function renderAdjustScheduleModalContent(scheduleId) {
     occupiedRoleIds.set(a.roleId, a.memberId);
   });
 
+  const percentFilled = targetPositions > 0 ? Math.min(100, Math.round((assignments.length / targetPositions) * 100)) : 100;
+
   container.innerHTML = `
+    <!-- 0. CONTROLE DA QUANTIDADE DE VOLUNTÁRIOS NA ESCALA (META DE VAGAS) -->
+    <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-cyan-500/10 border border-amber-500/35 space-y-3.5 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+              <i data-lucide="target" class="w-4 h-4 text-amber-400"></i>
+              <span>Meta / Quantidade de Voluntários Neste Culto</span>
+            </h4>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              Vagas Definidas
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">
+            Ajuste a quantidade exata de pessoas que você precisa nesta escala (ex: 4 para culto menor, 8 para semana ou 15 para domingo).
+          </p>
+        </div>
+
+        <!-- Seletor / Stepper de Quantidade -->
+        <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-700 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onclick="updateScheduleTargetVolunteers('${sched.id}', ${Math.max(1, targetPositions - 1)})"
+            title="Diminuir quantidade de vagas"
+            class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm flex items-center justify-center transition">
+            -
+          </button>
+          <input
+            type="number"
+            min="1"
+            max="50"
+            value="${targetPositions}"
+            onchange="updateScheduleTargetVolunteers('${sched.id}', this.value)"
+            class="w-14 bg-transparent text-center font-display font-extrabold text-base text-amber-300 focus:outline-none" />
+          <button
+            type="button"
+            onclick="updateScheduleTargetVolunteers('${sched.id}', ${targetPositions + 1})"
+            title="Aumentar quantidade de vagas"
+            class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm flex items-center justify-center transition">
+            +
+          </button>
+          <span class="text-xs font-bold text-slate-300 pr-2">vagas</span>
+        </div>
+      </div>
+
+      <!-- Atalhos Rápidos de Quantidade -->
+      <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/80">
+        <span class="text-[10px] uppercase font-bold text-slate-400 mr-1">Atalhos rápidos:</span>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 4)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 4 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          4 Vagas (Mínimo)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 6)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 6 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          6 Vagas (Básico)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 8)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 8 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          8 Vagas (Culto Semanal)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 10)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 10 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          10 Vagas (Intermediário)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 12)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 12 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          12 Vagas (Padrão)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 15)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 15 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          15 Vagas (Completo)
+        </button>
+        <button
+          type="button"
+          onclick="updateScheduleTargetVolunteers('${sched.id}', 18)"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${targetPositions === 18 ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}">
+          18 Vagas (Grande Evento)
+        </button>
+      </div>
+
+      <!-- Barra de Progresso da Quantidade Escalada -->
+      <div>
+        <div class="flex items-center justify-between text-[11px] font-bold mb-1">
+          <span class="text-slate-300">Preenchimento da Quantidade Desejada:</span>
+          <span class="${assignments.length >= targetPositions ? 'text-emerald-300' : 'text-amber-300'} font-extrabold">
+            ${assignments.length} de ${targetPositions} voluntários escalados (${percentFilled}%)
+          </span>
+        </div>
+        <div class="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+          <div
+            class="h-full rounded-full transition-all duration-300 ${assignments.length >= targetPositions ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-amber-500 to-orange-400'}"
+            style="width: ${percentFilled}%"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- 1. PAINEL DE ADICIONAR VOLUNTÁRIO -->
     <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/30 space-y-3.5 shadow-xl">
       <div class="flex items-center justify-between">
@@ -4783,18 +4955,27 @@ function renderAdjustScheduleModalContent(scheduleId) {
               required
               class="w-full bg-slate-900/90 border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
               <option value="">-- Escolha a função --</option>
-              ${state.roles.map(r => {
-                const occupiedMemberId = occupiedRoleIds.get(r.id);
-                const occupiedMember = occupiedMemberId ? getMemberById(occupiedMemberId) : null;
-                const tag = occupiedMember
-                  ? `(Ocupada por ${occupiedMember.name})`
-                  : `[✓ VAGA ABERTA]`;
-                return `
-                  <option value="${r.id}">
-                    ${escapeHTML(r.shortName)} • ${escapeHTML(r.category)} ${tag}
-                  </option>
-                `;
-              }).join('')}
+              <optgroup label="Estações Oficiais da Mídia">
+                ${state.roles.map(r => {
+                  const occupiedMemberId = occupiedRoleIds.get(r.id);
+                  const occupiedMember = occupiedMemberId ? getMemberById(occupiedMemberId) : null;
+                  const tag = occupiedMember
+                    ? `(Ocupada por ${occupiedMember.name})`
+                    : `[✓ VAGA ABERTA]`;
+                  return `
+                    <option value="${r.id}">
+                      ${escapeHTML(r.shortName)} • ${escapeHTML(r.category)} ${tag}
+                    </option>
+                  `;
+                }).join('')}
+              </optgroup>
+              <optgroup label="★ Vagas Extras / Adicionais">
+                <option value="extra_apoio">★ Vaga Extra: Apoio Geral de Mídia</option>
+                <option value="extra_camera">★ Vaga Extra: Cinegrafista Adicional</option>
+                <option value="extra_foto">★ Vaga Extra: Fotógrafo Adicional</option>
+                <option value="extra_social">★ Vaga Extra: Social Media Adicional</option>
+                <option value="extra_intercom">★ Vaga Extra: Operador de Intercom</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -5069,6 +5250,7 @@ function handleSaveSchedule(e) {
   const startTime = document.getElementById('sched-start').value;
   const dressCode = document.getElementById('sched-dress').value.trim();
   const notes = document.getElementById('sched-notes').value.trim();
+  const targetVolunteers = parseInt(document.getElementById('sched-target-volunteers')?.value, 10) || 15;
   const autoFill = document.getElementById('sched-autofill').checked;
 
   if (!title || !date) return;
@@ -5080,6 +5262,7 @@ function handleSaveSchedule(e) {
     date,
     callTime,
     startTime,
+    targetVolunteers: targetVolunteers > 0 ? targetVolunteers : 15,
     location: 'Templo Sede — Assembleia de Deus',
     dressCode: dressCode || 'Padrão Mídia',
     notes,
@@ -6169,7 +6352,7 @@ function renderSchedulesTab() {
   const selected = state.schedules.find(s => s.id === state.selectedScheduleId) || state.schedules[0];
 
   // Top KPI strip
-  const totalPositions = selected ? state.roles.length : 0;
+  const totalPositions = selected ? getScheduleTargetPositions(selected) : 0;
   const filledPositions = selected ? selected.assignments.length : 0;
   const confirmedCount = selected ? selected.assignments.filter(a => a.status === 'confirmed').length : 0;
   const swapCount = selected ? selected.assignments.filter(a => a.status === 'swap_requested').length : 0;
@@ -6321,7 +6504,7 @@ function renderSchedulesTab() {
                       <div class="flex flex-wrap items-center gap-2 mt-2.5 text-[11px] text-slate-400">
                         <span class="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                           <i data-lucide="users" class="w-3 h-3"></i>
-                          ${sched.assignments.length}/${state.roles.length} escalados (${confirmed} OK)
+                          ${sched.assignments.length}/${getScheduleTargetPositions(sched)} escalados (${confirmed} OK)
                         </span>
                         ${swaps > 0 ? `
                           <span class="inline-flex items-center gap-1 text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-md border border-rose-500/30">
@@ -6459,7 +6642,17 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
           </span>
         </div>
         <div class="p-3.5 rounded-2xl bg-slate-900/75 border border-slate-800/80">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Status da Equipe</span>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Status da Equipe</span>
+            ${isDirector ? `
+              <button
+                type="button"
+                onclick="openAdjustScheduleModal('${sched.id}')"
+                class="text-[9px] text-cyan-300 hover:text-cyan-200 font-extrabold uppercase hover:underline">
+                Ajustar Vagas
+              </button>
+            ` : ''}
+          </div>
           <span class="text-xs font-bold text-emerald-300 mt-1 block">
             ${confirmedCount} confirmados • ${filledPositions}/${totalPositions} vagas
           </span>
