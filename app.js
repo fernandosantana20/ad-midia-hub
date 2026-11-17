@@ -89,8 +89,13 @@ function isPrivilegedUser(member = getLoggedInUser()) {
 }
 
 function canMarkAttendanceUser(member = getLoggedInUser()) {
-  if (!member) return false;
-  return member.roleType === 'developer' || member.roleType === 'director' || member.canMarkAttendance === true;
+  if (!member) {
+    return state.mode === 'director';
+  }
+  return member.roleType === 'developer' || 
+         member.roleType === 'director' || 
+         member.roleType === 'leader' || 
+         member.canMarkAttendance === true;
 }
 
 function toggleMemberAttendancePermission(memberId) {
@@ -238,9 +243,11 @@ function normalizeLoadedState() {
     } else {
       if (initMem.nickname && !existing.nickname) existing.nickname = initMem.nickname;
       if (initMem.age && !existing.age) existing.age = initMem.age;
-      if (initMem.congregation && !existing.congregation) existing.congregation = initMem.congregation;
+      if (initMem.congregation && (!existing.congregation || existing.congregation === '--')) existing.congregation = initMem.congregation;
       if (initMem.experienceTime && !existing.experienceTime) existing.experienceTime = initMem.experienceTime;
       if (initMem.phone && !existing.phone) existing.phone = initMem.phone;
+      if (initMem.birthDate && !existing.birthDate) existing.birthDate = initMem.birthDate;
+      if (initMem.memberCardNumber && !existing.memberCardNumber) existing.memberCardNumber = initMem.memberCardNumber;
     }
   });
 
@@ -257,6 +264,15 @@ function normalizeLoadedState() {
     }
     if (!m.email && initialRef?.email) {
       m.email = initialRef.email;
+    }
+    if (initialRef?.birthDate && !m.birthDate) {
+      m.birthDate = initialRef.birthDate;
+    }
+    if (initialRef?.memberCardNumber && !m.memberCardNumber) {
+      m.memberCardNumber = initialRef.memberCardNumber;
+    }
+    if (initialRef?.congregation && (!m.congregation || m.congregation === '--')) {
+      m.congregation = initialRef.congregation;
     }
     if (m.id === 'm1') {
       m.email = 'fernandosantanaferramentas@gmail.com';
@@ -946,6 +962,12 @@ function openQrModal(memberId) {
   modal.dataset.memberId = member.id;
   document.getElementById('qr-member-name').textContent = member.name;
   document.getElementById('qr-member-role').textContent = member.title || getRoleTypeLabel(member.roleType);
+  const detailsEl = document.getElementById('qr-member-details');
+  if (detailsEl) {
+    const cong = member.congregation ? `⛪ ${member.congregation}` : '⛪ Sede';
+    const card = member.memberCardNumber ? ` • 💳 Cartão: ${member.memberCardNumber}` : '';
+    detailsEl.textContent = `${cong}${card}`;
+  }
   document.getElementById('qr-member-token').textContent = member.qrToken;
   document.getElementById('qr-code-img').src = getQrCodeImageUrl(member.qrToken, 260);
   modal.classList.remove('hidden');
@@ -964,6 +986,8 @@ function printMemberBadge() {
   const qrUrl = getQrCodeImageUrl(member.qrToken, 300);
   const roleLabel = getRoleTypeLabel(member.roleType);
   const skillsList = (member.skills || []).map(sId => getRoleById(sId).shortName).join(' • ');
+  const congLabel = member.congregation || 'Sede (Templo Central)';
+  const cardLabel = member.memberCardNumber ? `Nº ${member.memberCardNumber}` : 'Membro AD';
 
   const printWin = window.open('', '_blank', 'width=480,height=720');
   if (!printWin) {
@@ -1105,6 +1129,7 @@ function printMemberBadge() {
         }
         <div class="member-name">${escapeHTML(member.name)}</div>
         <div class="member-role">${escapeHTML(roleLabel)}</div>
+        <div style="font-size: 11px; color: #38bdf8; margin-top: 4px; font-weight: 600;">⛪ ${escapeHTML(congLabel)} • 💳 ${escapeHTML(cardLabel)}</div>
         <div class="skills">${escapeHTML(skillsList)}</div>
         <div class="qr-box">
           <img src="${qrUrl}" alt="QR Code" onload="setTimeout(() => window.print(), 400)" />
@@ -3709,11 +3734,18 @@ function setActiveTab(tab) {
   state.activeTab = tab;
   renderApp();
 
-  // Se o Diretor Lucas Henrique, Dev Fernando ou Marcador Autorizado clicar na aba de Frequência, ativa diretamente a câmera do leitor de QR Code!
-  if (tab === 'attendance' && canMarkAttendanceUser(logged)) {
+  // Ao clicar na aba de Frequência QR Code:
+  // Se for autorizado a marcar (Diretor, Dev, Líder, Marcador), abre o leitor de QR Code com câmera!
+  // Se for voluntário regular, abre imediatamente o seu QR Code individual para ser escaneado!
+  if (tab === 'attendance') {
     setTimeout(() => {
-      openScanAttendanceModal();
-    }, 180);
+      if (canMarkAttendanceUser(logged)) {
+        openScanAttendanceModal();
+      } else {
+        const myMem = logged || state.members[0];
+        if (myMem) openQrModal(myMem.id);
+      }
+    }, 150);
   }
 }
 
@@ -4184,6 +4216,12 @@ function openMemberModal(memberId = null) {
   document.getElementById('member-title').value = member ? member.title : '';
   document.getElementById('member-phone').value = member ? member.phone : '';
   document.getElementById('member-availability').value = member ? member.availability : 'Todos os cultos';
+  const congField = document.getElementById('member-congregation');
+  if (congField) congField.value = member ? (member.congregation || '') : '';
+  const birthField = document.getElementById('member-birthdate');
+  if (birthField) birthField.value = member ? (member.birthDate || '') : '';
+  const cardField = document.getElementById('member-cardnumber');
+  if (cardField) cardField.value = member ? (member.memberCardNumber || '') : '';
   const roleTypeSelect = document.getElementById('member-roletype');
   if (roleTypeSelect) {
     roleTypeSelect.value = member ? member.roleType : 'member';
@@ -4328,6 +4366,9 @@ function handleSaveMember(e) {
   const title = document.getElementById('member-title').value.trim();
   const phone = document.getElementById('member-phone').value.trim();
   const availability = document.getElementById('member-availability').value.trim();
+  const congregation = (document.getElementById('member-congregation')?.value || '').trim();
+  const birthDate = (document.getElementById('member-birthdate')?.value || '').trim();
+  const memberCardNumber = (document.getElementById('member-cardnumber')?.value || '').trim();
   const roleType = document.getElementById('member-roletype').value;
   const starRatingInput = Number(document.getElementById('member-starrating')?.value || 0);
   const canMarkInput = Boolean(document.getElementById('member-canmarkattendance')?.checked);
@@ -4354,6 +4395,9 @@ function handleSaveMember(e) {
       existing.title = title || 'Voluntário AD Mídia';
       existing.phone = phone;
       existing.availability = availability || 'Domingos';
+      existing.congregation = congregation || existing.congregation || 'Sede';
+      existing.birthDate = birthDate;
+      existing.memberCardNumber = memberCardNumber;
       if (canManage) {
         existing.roleType = roleType;
         existing.starRating = Math.max(0, Math.min(10, starRatingInput));
@@ -4381,6 +4425,9 @@ function handleSaveMember(e) {
       phone: phone || '',
       skills,
       availability: availability || 'Todos os cultos',
+      congregation: congregation || 'Sede',
+      birthDate: birthDate || '',
+      memberCardNumber: memberCardNumber || '',
       avatarColor: AVATAR_GRADIENTS[state.members.length % AVATAR_GRADIENTS.length],
       photoUrl,
       historyParticipations: 0,
@@ -4973,6 +5020,202 @@ function renderTopRankingBanner() {
 }
 
 // ============================================================================
+// DASHBOARD DE ANIVERSARIANTES DA SEMANA
+// ============================================================================
+
+function getBirthdayData(members = state.members) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDate = now.getDate();
+
+  // Início da semana atual (Domingo) e fim (Sábado)
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(currentDate - dayOfWeek);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+  const birthdayList = [];
+
+  members.forEach(member => {
+    if (!member.birthDate) return;
+    const parts = member.birthDate.split('-');
+    if (parts.length !== 3) return;
+    const birthYear = parseInt(parts[0], 10);
+    const birthMonth = parseInt(parts[1], 10) - 1;
+    const birthDay = parseInt(parts[2], 10);
+
+    // Data de aniversário no ano atual
+    const bdayThisYear = new Date(currentYear, birthMonth, birthDay);
+    const dayOfWeekName = weekDays[bdayThisYear.getDay()];
+
+    // Checar se cai na semana corrente (Domingo a Sábado)
+    const isThisWeek = (bdayThisYear >= startOfWeek && bdayThisYear <= endOfWeek);
+
+    // Diferença em dias em relação a hoje
+    const todayMidnight = new Date(currentYear, currentMonth, currentDate);
+    const diffTime = bdayThisYear.getTime() - todayMidnight.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    // Idade completada este ano
+    const age = currentYear - birthYear;
+
+    if (isThisWeek || (diffDays >= 0 && diffDays <= 7)) {
+      birthdayList.push({
+        member,
+        birthDate: member.birthDate,
+        day: birthDay,
+        month: birthMonth + 1,
+        monthName: monthNames[birthMonth],
+        dayOfWeekName,
+        dateFormatted: `${String(birthDay).padStart(2, '0')}/${String(birthMonth + 1).padStart(2, '0')}`,
+        age,
+        diffDays,
+        isToday: diffDays === 0,
+        isPast: diffDays < 0,
+        isUpcoming: diffDays > 0,
+        bdayDate: bdayThisYear
+      });
+    }
+  });
+
+  birthdayList.sort((a, b) => a.diffDays - b.diffDays);
+
+  return {
+    birthdays: birthdayList,
+    startOfWeekStr: `${String(startOfWeek.getDate()).padStart(2, '0')}/${String(startOfWeek.getMonth() + 1).padStart(2, '0')}`,
+    endOfWeekStr: `${String(endOfWeek.getDate()).padStart(2, '0')}/${String(endOfWeek.getMonth() + 1).padStart(2, '0')}`
+  };
+}
+
+function sendBirthdayWhatsApp(memberId) {
+  const member = getMemberById(memberId);
+  if (!member) return;
+  const firstName = member.name.split(' ')[0];
+  const phone = (member.phone || '').replace(/\D/g, '');
+  const text = encodeURIComponent(`🎉 Graça e Paz, ${firstName}! A equipe da AD Mídia Hub deseja a você um Feliz Aniversário! Que Deus continue abençoando ricamente sua vida e seu ministério na mídia da igreja! 🎂🎈✨`);
+  if (phone) {
+    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${text}`, '_blank');
+  } else {
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+}
+
+function renderBirthdayWidget() {
+  const data = getBirthdayData();
+  const birthdays = data.birthdays;
+
+  return `
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-pink-500/35 relative overflow-hidden bg-gradient-to-br from-pink-950/20 via-slate-900/60 to-purple-950/20 shadow-xl">
+      <div class="absolute -right-10 -top-10 w-44 h-44 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Header do Dashboard de Aniversariantes -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-pink-500/20">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-500 to-amber-400 text-slate-950 flex items-center justify-center font-extrabold shadow-lg glow-pink">
+            <i data-lucide="cake" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg sm:text-xl font-display font-extrabold text-white">Aniversariantes da Semana</h2>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-500/20 text-pink-300 border border-pink-500/40">
+                ${birthdays.length} ${birthdays.length === 1 ? 'comemoração' : 'comemorações'}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Semana de <strong class="text-pink-300">${data.startOfWeekStr}</strong> a <strong class="text-pink-300">${data.endOfWeekStr}</strong> • Homenagens da Equipe AD Mídia
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+          <span class="text-[11px] font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-xl flex items-center gap-1.5">
+            <span>🎉</span>
+            <span>Vamos celebrar a vida dos nossos voluntários!</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Conteúdo dos Cards de Aniversariantes -->
+      <div class="mt-4">
+        ${birthdays.length === 0 ? `
+          <div class="text-center py-6 text-slate-400 space-y-1">
+            <p class="text-sm font-semibold">Nenhum voluntário faz aniversário nesta semana atual.</p>
+            <p class="text-xs text-slate-500">Cadastre a data de nascimento dos voluntários no perfil para acompanhar aqui!</p>
+          </div>
+        ` : `
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            ${birthdays.map(item => {
+              const isToday = item.isToday;
+              return `
+                <div class="rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
+                  isToday
+                    ? 'bg-gradient-to-b from-pink-500/20 via-purple-500/15 to-slate-900 border-2 border-pink-400 shadow-lg glow-pink scale-[1.02]'
+                    : 'bg-slate-900/80 border border-slate-800 hover:border-pink-500/40'
+                }">
+                  ${isToday ? `
+                    <div class="absolute top-0 right-0 bg-gradient-to-r from-pink-500 to-amber-400 text-slate-950 text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-bl-xl shadow flex items-center gap-1">
+                      <span>🎂</span>
+                      <span>É HOJE! PARABÉNS!</span>
+                    </div>
+                  ` : ''}
+
+                  <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                      <div class="relative shrink-0">
+                        ${renderMemberAvatar(item.member, 'w-12 h-12 rounded-2xl text-sm', false)}
+                        <span class="absolute -bottom-1 -right-1 text-sm">🎈</span>
+                      </div>
+                      <div class="min-w-0 pr-6">
+                        <h4 class="text-sm font-display font-extrabold text-white truncate">${escapeHTML(item.member.name)}</h4>
+                        <p class="text-xs text-cyan-300 font-medium truncate">${escapeHTML(item.member.title || 'Voluntário AD Mídia')}</p>
+                        <p class="text-[11px] text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                          <span>⛪</span>
+                          <span>${escapeHTML(item.member.congregation || 'Sede')}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs">
+                      <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block">${item.dayOfWeekName}</span>
+                        <strong class="text-pink-300 font-display text-sm">${item.dateFormatted}</strong>
+                      </div>
+                      <div class="text-right">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block">Completando</span>
+                        <strong class="text-amber-300 font-display text-sm">${item.age} anos 🎂</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onclick="sendBirthdayWhatsApp('${item.member.id}')"
+                      class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition">
+                      <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                      <span>Dar Parabéns no WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
 // ABA 1: CENTRAL DE ESCALAS (VISÃO DIRETOR & GERAL)
 // ============================================================================
 
@@ -5062,6 +5305,9 @@ function renderSchedulesTab() {
 
       <!-- Storyboard de Quantidade de Voluntários e Funções -->
       ${renderVolunteersRolesStoryboard()}
+
+      <!-- Dashboard de Aniversariantes da Semana -->
+      ${renderBirthdayWidget()}
 
       <!-- Top 5 Gamification Ranking Banner -->
       ${renderTopRankingBanner()}
@@ -5841,6 +6087,9 @@ function renderMembersTab() {
       <!-- Storyboard de Quantidade de Voluntários e Funções -->
       ${renderVolunteersRolesStoryboard()}
 
+      <!-- Dashboard de Aniversariantes da Semana -->
+      ${renderBirthdayWidget()}
+
       <!-- Search & Filter Bar -->
       <div class="glass-panel rounded-3xl p-5 border border-slate-800/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -5915,6 +6164,8 @@ function renderMembersTab() {
                     <p class="text-[11px] text-emerald-300/90 truncate mt-0.5">${escapeHTML(member.email || 'Sem Gmail cadastrado')}</p>
                     ${member.phone ? `<p class="text-[11px] text-slate-300 font-medium mt-0.5 flex items-center gap-1"><span>📱</span><span>${escapeHTML(member.phone)}</span></p>` : ''}
                     ${member.congregation ? `<p class="text-[11px] text-slate-400 mt-0.5">⛪ Congregação: <strong class="text-slate-200">${escapeHTML(member.congregation)}</strong> ${member.age ? `• ${escapeHTML(member.age)}` : ''} ${member.experienceTime ? `• ⏱️ ${escapeHTML(member.experienceTime)}` : ''}</p>` : ''}
+                    ${member.birthDate ? `<p class="text-[11px] text-pink-300 font-medium mt-0.5 flex items-center gap-1.5"><span>🎂</span><span>Nascimento: <strong>${member.birthDate.split('-').reverse().join('/')}</strong></span></p>` : ''}
+                    ${member.memberCardNumber ? `<p class="text-[11px] text-cyan-300 font-mono font-bold mt-0.5 flex items-center gap-1.5"><span>💳</span><span>Cartão Nº: <strong>${escapeHTML(member.memberCardNumber)}</strong></span></p>` : ''}
                   </div>
                 </div>
 

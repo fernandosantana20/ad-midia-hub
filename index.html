@@ -297,6 +297,63 @@
           </div>
         </div>
 
+        <!-- Novos Campos: Congregação, Data de Nascimento e Nº Cartão de Membro -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="church" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Congregação</span>
+            </label>
+            <input
+              id="member-congregation"
+              type="text"
+              list="congregation-suggestions"
+              placeholder="Ex: Sede, Salém, Jerusalém..."
+              class="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 font-medium" />
+            <datalist id="congregation-suggestions">
+              <option value="Sede (Templo Central)"></option>
+              <option value="Salém"></option>
+              <option value="Jerusalém"></option>
+              <option value="Liberdade"></option>
+              <option value="Vale de Benção"></option>
+              <option value="Monte Tabor"></option>
+              <option value="Cântico de Sião"></option>
+              <option value="Nova Esperança"></option>
+              <option value="Restauração"></option>
+              <option value="Beth Shalom"></option>
+              <option value="Estrela da Manhã"></option>
+              <option value="Manassés"></option>
+              <option value="Êxodo"></option>
+              <option value="IEADI Monte Hebrom"></option>
+              <option value="ADVB"></option>
+              <option value="Herdeiros de Sião"></option>
+            </datalist>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-pink-300 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="cake" class="w-3.5 h-3.5 text-pink-400"></i>
+              <span>Data de Nascimento</span>
+            </label>
+            <input
+              id="member-birthdate"
+              type="date"
+              class="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-pink-400 font-medium" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-cyan-300 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="credit-card" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Nº Cartão de Membro</span>
+            </label>
+            <input
+              id="member-cardnumber"
+              type="text"
+              placeholder="Ex: 004821 ou ADM-102"
+              class="w-full bg-slate-950/90 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 font-mono font-bold" />
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Nível de Acesso (Apenas Liderança)</label>
@@ -606,6 +663,7 @@
       <div>
         <h4 id="qr-member-name" class="text-lg font-display font-extrabold text-white">Voluntário</h4>
         <p id="qr-member-role" class="text-xs text-cyan-300 font-medium">Equipe</p>
+        <p id="qr-member-details" class="text-[11px] text-slate-300 mt-1 font-medium"></p>
       </div>
 
       <div class="p-4 rounded-2xl bg-white border-4 border-emerald-400 inline-block mx-auto shadow-2xl">
