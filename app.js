@@ -2868,40 +2868,43 @@ function syncReportRowsFromSelection() {
   }
 
   if (!cfg.rowValuesById) cfg.rowValuesById = {};
+  if (!cfg.sourceFilter) cfg.sourceFilter = 'scheduled';
   const rows = [];
   const valDefault = cfg.defaultValue || '';
   const addedMemberIds = new Set();
 
-  if (sched && Array.isArray(sched.assignments) && sched.assignments.length > 0) {
-    // Por padrão: inclui todos os voluntários escalados no culto selecionado
+  if (cfg.sourceFilter === 'scheduled' && sched && Array.isArray(sched.assignments)) {
+    // 1. Filtrar Voluntários: Escalados no Culto
     sched.assignments.forEach(a => {
       const m = getMemberById(a.memberId);
       if (!m || addedMemberIds.has(m.id)) return;
-
-      const logs = Array.isArray(m.attendanceLogs) ? m.attendanceLogs : [];
-      const hasQrInThisSchedule = logs.some(l => l.scheduleId === sched.id || l.date === sched.date);
-      const isConfirmedPresent = a.status === 'confirmed' || hasQrInThisSchedule;
-
-      // Se filtro restrito de apenas confirmados estiver ativo
-      if (cfg.onlyConfirmed && !isConfirmedPresent) return;
-
       addedMemberIds.add(m.id);
       const rowId = 'row_' + m.id + '_' + a.roleId;
       rows.push({
         id: rowId,
         name: m.name.toUpperCase(),
         value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
-        signature: hasQrInThisSchedule
-          ? 'PRESENTE (QR CODE)'
-          : a.status === 'confirmed'
-          ? 'PRESENTE NA ESCALA'
-          : 'ESCALADO'
+        signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
       });
     });
-  }
-
-  // Se a escala não tiver membros ou se selecionado toda a equipe
-  if (rows.length === 0 || cfg.scheduleId === 'all_members') {
+  } else if (cfg.sourceFilter === 'qr_present') {
+    // 2. Filtrar Voluntários: Apenas Presentes no QR Code
+    state.members.forEach(m => {
+      const logs = Array.isArray(m.attendanceLogs) ? m.attendanceLogs : [];
+      const matchLog = sched ? logs.find(l => l.scheduleId === sched.id || l.date === sched.date) : logs[0];
+      if (matchLog && !addedMemberIds.has(m.id)) {
+        addedMemberIds.add(m.id);
+        const rowId = 'row_qr_' + m.id;
+        rows.push({
+          id: rowId,
+          name: m.name.toUpperCase(),
+          value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
+          signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
+        });
+      }
+    });
+  } else {
+    // 3. Filtrar Voluntários: Todos os Membros da Equipe
     state.members.forEach(m => {
       if (addedMemberIds.has(m.id)) return;
       addedMemberIds.add(m.id);
@@ -2910,7 +2913,7 @@ function syncReportRowsFromSelection() {
         id: rowId,
         name: m.name.toUpperCase(),
         value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
-        signature: ''
+        signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
       });
     });
   }
@@ -2920,18 +2923,20 @@ function syncReportRowsFromSelection() {
 
 function handleReportFilterChange() {
   const schedSel = document.getElementById('rep-schedule-select')?.value || state.selectedScheduleId || 'all_members';
+  const sourceSel = document.getElementById('rep-source-select')?.value || state.reportConfig.sourceFilter || 'scheduled';
   const dateInp = document.getElementById('rep-date-input')?.value || state.reportConfig.eventDate;
   const titleInp = document.getElementById('rep-title-input')?.value || state.reportConfig.eventTitle;
   const valInp = document.getElementById('rep-default-val')?.value ?? state.reportConfig.defaultValue;
 
   state.reportConfig.scheduleId = schedSel;
+  state.reportConfig.sourceFilter = sourceSel;
   state.reportConfig.eventDate = dateInp;
   state.reportConfig.eventTitle = titleInp;
   state.reportConfig.defaultValue = valInp;
 
   syncReportRowsFromSelection();
   renderApp();
-  showToast('Lista da Cantina sincronizada com os escalados e presentes do culto!', 'amber');
+  showToast('Lista da Cantina atualizada com o filtro de voluntários!', 'amber');
 }
 
 function updateReportHeaderField(field, value) {
@@ -3161,7 +3166,7 @@ function exportCanteenReportPDF() {
                 <td class="col-name">${escapeHTML(r.name)}</td>
                 <td class="col-val">${escapeHTML(r.value || '')}</td>
                 <td class="col-sig">
-                  ${r.signatureImage ? `<img src="${r.signatureImage}" style="height:26px; max-width:140px; object-fit:contain; display:inline-block;" />` : escapeHTML(r.signature || '')}
+                  ${r.signatureImage ? `<img src="${r.signatureImage}" style="height:26px; max-width:140px; object-fit:contain; display:inline-block;" />` : ''}
                 </td>
               </tr>
             `).join('')}
@@ -3196,7 +3201,7 @@ function exportCanteenReportExcel() {
         ...rows.map(r => [
           r.name,
           r.value || '',
-          r.signature || ''
+          '' // LIMPO para assinatura manuscrita a caneta
         ])
       ];
 
@@ -3694,8 +3699,8 @@ function renderCanteenAndAttendanceReportGenerator() {
 
         <!-- Painel de Configuração da Lista da Cantina -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900/75 p-4 rounded-2xl border border-slate-800">
-          <div class="sm:col-span-2">
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-1">1. Escala / Culto do Dia (Filtra Escalados + Presentes)</label>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-1">1. Escala / Culto do Dia</label>
             <select
               id="rep-schedule-select"
               onchange="handleReportFilterChange()"
@@ -3711,7 +3716,19 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">2. Data na Barra Amarela</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-1">2. Filtrar Voluntários</label>
+            <select
+              id="rep-source-select"
+              onchange="handleReportFilterChange()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-cyan-400">
+              <option value="scheduled" ${(cfg.sourceFilter || 'scheduled') === 'scheduled' ? 'selected' : ''}>Escalados no Culto</option>
+              <option value="qr_present" ${cfg.sourceFilter === 'qr_present' ? 'selected' : ''}>Apenas Presentes no QR Code</option>
+              <option value="all" ${cfg.sourceFilter === 'all' ? 'selected' : ''}>Todos os ${state.members.length} Voluntários</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">3. Data na Barra Amarela</label>
             <input
               id="rep-date-input"
               type="text"
@@ -3722,7 +3739,7 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">3. Título na Barra Amarela</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">4. Título na Barra Amarela</label>
             <input
               id="rep-title-input"
               type="text"
@@ -3733,7 +3750,7 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">4. Valor Padrão Cantina</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">5. Valor Padrão Cantina</label>
             <div class="flex gap-1.5">
               <input
                 id="rep-default-val"
@@ -3762,9 +3779,9 @@ function renderCanteenAndAttendanceReportGenerator() {
           <div class="overflow-x-auto max-h-96">
             ${rows.length === 0 ? `
               <div class="p-8 text-center space-y-2">
-                <p class="text-sm font-bold text-amber-300">Nenhum voluntário escalado e com presença confirmada nesta escala ainda.</p>
+                <p class="text-sm font-bold text-amber-300">Nenhum voluntário encontrado com o filtro selecionado.</p>
                 <p class="text-xs text-slate-400">
-                  Assim que o voluntário escalado no culto tiver a presença marcada (via QR Code ou confirmação na escala), o nome dele entra automaticamente aqui na lista da cantina!
+                  Alterne o filtro acima para "Todos os Voluntários" ou selecione outro culto na lista!
                 </p>
               </div>
             ` : `
@@ -3794,13 +3811,13 @@ function renderCanteenAndAttendanceReportGenerator() {
                         ${row.signatureImage ? `
                           <img src="${row.signatureImage}" class="h-8 max-w-[140px] mx-auto object-contain bg-white rounded p-0.5 border border-slate-700" alt="Rubrica" />
                         ` : `
-                          <span class="text-emerald-300 font-semibold text-[11px] block">${escapeHTML(row.signature || '')}</span>
+                          <span class="text-slate-500 italic text-[11px] block">— Limpo para assinatura a caneta —</span>
                         `}
                         <button
                           type="button"
                           onclick="openSignatureModal('${row.id}')"
                           class="text-[10px] text-amber-300 hover:text-amber-200 font-bold underline mt-1 block mx-auto transition">
-                          ${row.signatureImage ? 'Alterar Rubrica' : '✍️ Rubricar com o Dedo'}
+                          ${row.signatureImage ? 'Alterar Rubrica Digital' : '✍️ Rubricar no App (Opcional)'}
                         </button>
                       </td>
                     </tr>
