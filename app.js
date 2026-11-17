@@ -929,9 +929,10 @@ function resetAllMembersXP() {
 // CONTROLE DE FREQUÊNCIA POR QR CODE & MODAL DE AVALIAÇÃO
 // ============================================================================
 
-function getQrCodeImageUrl(token, size = 240) {
-  const safeToken = token || 'ADMIDIA-VOLUNTARIO';
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&bgcolor=070b19&color=38bdf8&margin=10&data=${encodeURIComponent(safeToken)}`;
+function getQrCodeImageUrl(token, size = 280) {
+  const safeToken = (token || 'ADMIDIA-VOLUNTARIO').trim();
+  // Fundo branco (#ffffff) e padrão preto (#000000) de alto contraste garantem leitura óptica instantânea em qualquer câmera ou tela
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&bgcolor=ffffff&color=000000&margin=8&qzone=2&data=${encodeURIComponent(safeToken)}`;
 }
 
 function openQrModal(memberId) {
@@ -1494,10 +1495,41 @@ function handleScanModalScheduleChange() {
   updateScanModalRecentList();
 }
 
+let currentScanFacingMode = 'environment';
+
+function toggleScanModalCameraFacing() {
+  currentScanFacingMode = currentScanFacingMode === 'environment' ? 'user' : 'environment';
+  restartScanModalCamera();
+  showToast(currentScanFacingMode === 'environment' ? '📷 Câmera Traseira ativada' : '🤳 Câmera Frontal ativada', 'cyan');
+}
+
+function handleScanQrFileSelected(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!window.Html5Qrcode) {
+    showToast('Biblioteca de QR Code indisponível.', 'amber');
+    return;
+  }
+
+  showToast('Analisando foto do QR Code...', 'cyan');
+  const tempScanner = new window.Html5Qrcode('scan-modal-camera-viewport');
+  tempScanner.scanFile(file, true)
+    .then(decodedText => {
+      const schedId = document.getElementById('scan-modal-schedule-select')?.value;
+      handleAttendanceScanResult(decodedText, schedId);
+    })
+    .catch(() => {
+      showToast('Nenhum QR Code detectado na foto. Tente aproximar ou use a lista manual.', 'rose');
+    })
+    .finally(() => {
+      event.target.value = '';
+    });
+}
+
 function restartScanModalCamera() {
   stopScanModalCamera();
   setTimeout(startScanModalCamera, 300);
-  showToast('Reiniciando câmera...', 'cyan');
 }
 
 function startScanModalCamera() {
@@ -1530,43 +1562,62 @@ function startScanModalCamera() {
 
 function startScanModalCameraInstance() {
   try {
-    scanModalHtml5Qr = new window.Html5Qrcode('scan-modal-camera-viewport');
-    scanModalHtml5Qr.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      decodedText => {
-        const now = Date.now();
-        if (decodedText === lastScannedToken && now - lastScannedTime < 3500) {
-          return;
-        }
-        lastScannedToken = decodedText;
-        lastScannedTime = now;
+    const readerDiv = document.getElementById('scan-modal-camera-viewport');
+    if (!readerDiv) return;
 
-        const schedId = document.getElementById('scan-modal-schedule-select')?.value;
-        handleAttendanceScanResult(decodedText, schedId);
+    scanModalHtml5Qr = new window.Html5Qrcode('scan-modal-camera-viewport');
+
+    const scanConfig = {
+      fps: 20,
+      aspectRatio: 1.0,
+      disableFlip: false,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const boxSize = Math.max(Math.floor(minEdge * 0.85), 180);
+        return { width: boxSize, height: boxSize };
       },
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      }
+    };
+
+    const onSuccess = decodedText => {
+      const now = Date.now();
+      if (decodedText === lastScannedToken && now - lastScannedTime < 2500) {
+        return;
+      }
+      lastScannedToken = decodedText;
+      lastScannedTime = now;
+
+      // Efeito visual de flash na câmera indicando leitura imediata
+      const viewport = document.getElementById('scan-modal-camera-viewport');
+      if (viewport) {
+        viewport.classList.add('ring-4', 'ring-emerald-400');
+        setTimeout(() => viewport.classList.remove('ring-4', 'ring-emerald-400'), 600);
+      }
+
+      const schedId = document.getElementById('scan-modal-schedule-select')?.value;
+      handleAttendanceScanResult(decodedText, schedId);
+    };
+
+    scanModalHtml5Qr.start(
+      { facingMode: currentScanFacingMode },
+      scanConfig,
+      onSuccess,
       () => {}
     ).catch(() => {
-      // Fallback: try default camera if environment fails
       if (!scanModalHtml5Qr) return;
       scanModalHtml5Qr.start(
         {},
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        decodedText => {
-          const now = Date.now();
-          if (decodedText === lastScannedToken && now - lastScannedTime < 3500) return;
-          lastScannedToken = decodedText;
-          lastScannedTime = now;
-          const schedId = document.getElementById('scan-modal-schedule-select')?.value;
-          handleAttendanceScanResult(decodedText, schedId);
-        },
+        scanConfig,
+        onSuccess,
         () => {}
       ).catch(() => {
-        showToast('Permissão de câmera não concedida. Use a confirmação manual abaixo.', 'amber');
+        showToast('Permissão de câmera não concedida. Use a chamada rápida em 1 toque abaixo.', 'amber');
       });
     });
   } catch (err) {
-    console.warn('Erro ao inicializar câmera:', err);
+    console.warn('Erro ao inicializar leitor QR:', err);
   }
 }
 
@@ -1596,6 +1647,7 @@ function handleScanModalManualSubmit(e) {
 
 function updateScanModalRecentList() {
   const container = document.getElementById('scan-modal-recent-list');
+  const pendingContainer = document.getElementById('scan-modal-pending-list');
   const countBadge = document.getElementById('scan-modal-count-badge');
   if (!container) return;
 
@@ -1605,6 +1657,7 @@ function updateScanModalRecentList() {
   if (!sched) {
     container.innerHTML = '<p class="text-[11px] text-slate-500 italic py-2 text-center">Nenhum culto selecionado.</p>';
     if (countBadge) countBadge.textContent = '0 presentes';
+    if (pendingContainer) pendingContainer.innerHTML = '';
     return;
   }
 
@@ -1622,29 +1675,70 @@ function updateScanModalRecentList() {
     countBadge.textContent = `${attendees.length} presente(s)`;
   }
 
+  // 1. Lista de Presenças Já Confirmadas
   if (attendees.length === 0) {
     container.innerHTML = `
-      <p class="text-[11px] text-slate-500 italic py-3 text-center">
-        Nenhuma presença registrada para este culto ainda. Aponte a câmera para os QR Codes!
+      <p class="text-[11px] text-slate-500 italic py-2 text-center">
+        Nenhuma presença registrada ainda neste culto. Aponte a câmera para os QR Codes ou toque na lista acima!
       </p>
     `;
-    return;
+  } else {
+    container.innerHTML = attendees.map(({ member, log }) => `
+      <div class="p-2 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          ${renderMemberAvatar(member, 'w-8 h-8 rounded-lg text-xs', false)}
+          <div class="min-w-0">
+            <h5 class="text-xs font-bold text-white truncate">${escapeHTML(member.name)}</h5>
+            <span class="text-[10px] text-emerald-300 font-mono block">✓ Presente às ${escapeHTML(log.time)} • ${escapeHTML(member.title)}</span>
+          </div>
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+          ✓ Confirmado (+150 XP)
+        </span>
+      </div>
+    `).join('');
   }
 
-  container.innerHTML = attendees.map(({ member, log }) => `
-    <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        ${renderMemberAvatar(member, 'w-8 h-8 rounded-lg text-xs', false)}
-        <div class="min-w-0">
-          <h5 class="text-xs font-bold text-white truncate">${escapeHTML(member.name)}</h5>
-          <span class="text-[10px] text-emerald-300 font-mono block">${escapeHTML(log.time)} • ${escapeHTML(member.title)}</span>
+  // 2. Chamada Rápida dos Voluntários Escalados Pendentes (Confirmação em 1 Toque)
+  if (pendingContainer) {
+    const assignedMemberIds = sched.assignments.map(a => a.memberId);
+    const pendingAssigned = state.members.filter(m => 
+      assignedMemberIds.includes(m.id) && !attendees.some(att => att.member.id === m.id)
+    );
+
+    if (pendingAssigned.length === 0) {
+      pendingContainer.innerHTML = `
+        <div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-center">
+          <span class="text-xs font-bold text-emerald-300">🎉 Todos os ${assignedMemberIds.length} voluntários escalados já confirmaram presença!</span>
         </div>
-      </div>
-      <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
-        ✓ Confirmado
-      </span>
-    </div>
-  `).join('');
+      `;
+    } else {
+      pendingContainer.innerHTML = pendingAssigned.map(m => {
+        const assign = sched.assignments.find(a => a.memberId === m.id);
+        const role = assign ? getRoleById(assign.roleId) : null;
+        return `
+          <div class="p-2 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/40 flex items-center justify-between gap-2 transition">
+            <div class="flex items-center gap-2 min-w-0">
+              ${renderMemberAvatar(m, 'w-8 h-8 rounded-lg text-xs', false)}
+              <div class="min-w-0">
+                <h5 class="text-xs font-bold text-slate-100 truncate">${escapeHTML(m.name)}</h5>
+                <span class="text-[10px] text-cyan-300 font-medium block truncate">${role?.name || m.title}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onclick="handleAttendanceScanResult('${m.id}', '${sched.id}')"
+              class="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-[11px] shrink-0 shadow flex items-center gap-1 transition">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span>Marcar Presença</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function handleAttendanceScanResult(rawToken, scheduleId = null) {
@@ -1668,12 +1762,20 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
     return;
   }
 
-  const member = state.members.find(
-    m => (m.qrToken || '').toUpperCase() === clean || m.id.toUpperCase() === clean || (m.email || '').toUpperCase() === clean
-  );
+  // Busca ultra-resiliente: por qrToken, por id, por email, por parte do token ou pelo nome
+  const member = state.members.find(m => {
+    const q = (m.qrToken || '').toUpperCase().trim();
+    const id = (m.id || '').toUpperCase().trim();
+    const em = (m.email || '').toUpperCase().trim();
+    const nm = (m.name || '').toUpperCase().trim();
+    return (q && (clean === q || clean.includes(q) || q.includes(clean))) ||
+           (id && (clean === id || clean.includes(id))) ||
+           (em && (clean === em || clean.includes(em))) ||
+           (clean.length >= 4 && nm && (clean.includes(nm) || nm.includes(clean)));
+  });
 
   if (!member) {
-    showToast(`Nenhum voluntário encontrado para o QR Code: "${clean}"`, 'rose');
+    showToast(`Nenhum voluntário encontrado para o código: "${clean}"`, 'rose');
     return;
   }
 
@@ -1711,7 +1813,8 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
   saveData();
   updateScanModalRecentList();
   renderApp();
-  showToast(`✅ Presença registrada: ${member.name} no culto "${targetSched.title}"! (+150 XP)`, 'emerald');
+  showToast(`✅ Presença confirmada: ${member.name} (+150 XP)`, 'emerald');
+}
 }
 
 function markAttendanceByQrToken(rawToken, scheduleId = null) {
@@ -6068,11 +6171,11 @@ function renderAttendanceTab() {
               </div>
             </div>
 
-            <div class="p-4 rounded-3xl bg-[#070b19] border border-cyan-500/40 inline-block mx-auto shadow-2xl">
+            <div class="p-4 rounded-2xl bg-white border-4 border-emerald-400 inline-block mx-auto shadow-2xl">
               <img
-                src="${getQrCodeImageUrl(myMember.qrToken, 220)}"
+                src="${getQrCodeImageUrl(myMember.qrToken, 240)}"
                 alt="QR Code ${escapeHTML(myMember.name)}"
-                class="w-48 h-48 mx-auto rounded-xl" />
+                class="w-48 h-48 mx-auto rounded-lg block" />
             </div>
 
             <div>

@@ -125,3 +125,19 @@ h1, h2, h3, h4, .font-display {
 .animate-view {
   animation: fadeInSlide 0.25s ease-out forwards;
 }
+
+@keyframes scanLaser {
+  0% { top: 12%; opacity: 0.8; }
+  50% { top: 86%; opacity: 1; }
+  100% { top: 12%; opacity: 0.8; }
+}
+
+.scanner-laser-line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #10b981, #00f0ff, #10b981, transparent);
+  box-shadow: 0 0 14px #10b981, 0 0 6px #00f0ff;
+  animation: scanLaser 2.2s ease-in-out infinite;
+}
