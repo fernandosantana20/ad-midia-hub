@@ -4673,6 +4673,393 @@ function closeScheduleModal() {
   document.getElementById('modal-schedule')?.classList.add('hidden');
 }
 
+// ============================================================================
+// MODAL: AJUSTE RÁPIDO DA ESCALA (ADICIONAR OU REMOVER VOLUNTÁRIOS)
+// ============================================================================
+
+function openAdjustScheduleModal(scheduleId = null) {
+  const targetId = scheduleId || state.selectedScheduleId || state.schedules[0]?.id;
+  if (!targetId) {
+    showToast('Nenhum culto ou evento encontrado para ajustar.', 'rose');
+    return;
+  }
+  const sched = state.schedules.find(s => s.id === targetId);
+  if (!sched) {
+    showToast('Culto não encontrado.', 'rose');
+    return;
+  }
+
+  state.selectedScheduleId = targetId;
+  const modal = document.getElementById('modal-adjust-schedule');
+  if (!modal) return;
+
+  renderAdjustScheduleModalContent(targetId);
+  modal.classList.remove('hidden');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeAdjustScheduleModal() {
+  const modal = document.getElementById('modal-adjust-schedule');
+  if (modal) modal.classList.add('hidden');
+}
+
+function renderAdjustScheduleModalContent(scheduleId) {
+  const container = document.getElementById('adjust-schedule-container');
+  const titleEl = document.getElementById('adjust-schedule-title');
+  const subtitleEl = document.getElementById('adjust-schedule-subtitle');
+  const countEl = document.getElementById('adjust-schedule-count');
+  if (!container) return;
+
+  const sched = state.schedules.find(s => s.id === scheduleId);
+  if (!sched) return;
+
+  const d = formatDateBR(sched.date);
+  const assignments = Array.isArray(sched.assignments) ? sched.assignments : [];
+  const confirmedCount = assignments.filter(a => a.status === 'confirmed').length;
+
+  if (titleEl) titleEl.textContent = `Ajustar Escala: ${sched.title}`;
+  if (subtitleEl) subtitleEl.textContent = `${d.full} de ${d.year} • Início: ${sched.startTime} • Local: ${sched.location}`;
+  if (countEl) countEl.textContent = `${assignments.length} de ${state.roles.length} vagas preenchidas (${confirmedCount} confirmados)`;
+
+  // Member options
+  const assignedMemberIds = new Set(assignments.map(a => a.memberId));
+  const sortedMembers = [...state.members].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Occupied roles map
+  const occupiedRoleIds = new Map();
+  assignments.forEach(a => {
+    occupiedRoleIds.set(a.roleId, a.memberId);
+  });
+
+  container.innerHTML = `
+    <!-- 1. PAINEL DE ADICIONAR VOLUNTÁRIO -->
+    <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/30 space-y-3.5 shadow-xl">
+      <div class="flex items-center justify-between">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+          <i data-lucide="user-plus" class="w-4 h-4 text-cyan-400"></i>
+          <span>1. Adicionar Voluntário à Escala</span>
+        </h4>
+        <span class="text-[10px] text-slate-400 font-semibold">${state.members.length} membros no banco</span>
+      </div>
+
+      <form onsubmit="addVolunteerToScheduleSubmit(event, '${sched.id}')" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Seletor de Voluntário -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+              Selecione o Voluntário *
+            </label>
+            <select
+              id="adjust-add-member"
+              required
+              class="w-full bg-slate-900/90 border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+              <option value="">-- Selecione quem vai servir --</option>
+              ${sortedMembers.map(m => {
+                const isAssigned = assignedMemberIds.has(m.id);
+                const assignedRole = isAssigned ? assignments.find(a => a.memberId === m.id) : null;
+                const roleObj = assignedRole ? getRoleById(assignedRole.roleId) : null;
+                const blk = isMemberBlockedOnDate(m, sched.date);
+                const tag = isAssigned
+                  ? `[JÁ ESCALADO: ${roleObj?.shortName || 'Função'}]`
+                  : blk
+                  ? `[🚫 INDISPONÍVEL: ${blk.reason}]`
+                  : `(Disponível)`;
+                return `
+                  <option value="${m.id}">
+                    ${escapeHTML(m.name)} • ${escapeHTML(m.congregation || 'Sede')} ${tag}
+                  </option>
+                `;
+              }).join('')}
+            </select>
+          </div>
+
+          <!-- Seletor de Função -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+              Função / Posição *
+            </label>
+            <select
+              id="adjust-add-role"
+              required
+              class="w-full bg-slate-900/90 border border-slate-700 focus:border-cyan-400 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+              <option value="">-- Escolha a função --</option>
+              ${state.roles.map(r => {
+                const occupiedMemberId = occupiedRoleIds.get(r.id);
+                const occupiedMember = occupiedMemberId ? getMemberById(occupiedMemberId) : null;
+                const tag = occupiedMember
+                  ? `(Ocupada por ${occupiedMember.name})`
+                  : `[✓ VAGA ABERTA]`;
+                return `
+                  <option value="${r.id}">
+                    ${escapeHTML(r.shortName)} • ${escapeHTML(r.category)} ${tag}
+                  </option>
+                `;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Status:</label>
+            <select
+              id="adjust-add-status"
+              class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none">
+              <option value="confirmed" selected>✓ Já Confirmado (Presente)</option>
+              <option value="pending">⏳ Pendente de Confirmação</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg glow-emerald flex items-center justify-center gap-2 transition shrink-0">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Adicionar à Escala</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 2. LISTA DE VOLUNTÁRIOS ATUALMENTE ESCALADOS -->
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+          <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+          <span>2. Voluntários Escalados Neste Culto (${assignments.length})</span>
+        </h4>
+
+        ${assignments.length > 0 ? `
+          <button
+            type="button"
+            onclick="clearAllVolunteersFromSchedule('${sched.id}')"
+            class="text-[11px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 hover:underline transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Limpar Todos os Voluntários</span>
+          </button>
+        ` : ''}
+      </div>
+
+      ${assignments.length === 0 ? `
+        <div class="p-8 text-center rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-300">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h5 class="text-sm font-bold text-white">Nenhum voluntário escalado ainda</h5>
+            <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              Utilize o formulário acima para adicionar voluntários, ou clique abaixo para auto-escalar a equipe com base nas habilidades.
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="autoFillSchedule('${sched.id}'); renderAdjustScheduleModalContent('${sched.id}');"
+            class="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold inline-flex items-center gap-2 transition">
+            <i data-lucide="wand-2" class="w-4 h-4"></i>
+            <span>Auto-Escalar Equipe Agora</span>
+          </button>
+        </div>
+      ` : `
+        <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+          ${assignments.map(a => {
+            const member = getMemberById(a.memberId);
+            const role = getRoleById(a.roleId);
+            const isConfirmed = a.status === 'confirmed';
+
+            return `
+              <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition">
+                <!-- Info do Membro -->
+                <div class="flex items-center gap-3 min-w-0">
+                  ${member ? renderMemberAvatar(member, 'w-10 h-10 rounded-xl text-xs', false) : `
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
+                      <i data-lucide="user" class="w-5 h-5"></i>
+                    </div>
+                  `}
+                  <div class="min-w-0">
+                    <h5 class="text-xs sm:text-sm font-bold text-white truncate">
+                      ${escapeHTML(member?.name || 'Voluntário não encontrado')}
+                    </h5>
+                    <p class="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                      <span class="text-cyan-300 font-medium">${escapeHTML(member?.congregation || 'Sede')}</span>
+                      <span>•</span>
+                      <span class="text-slate-400">${escapeHTML(member?.roleType === 'leader' ? 'Líder' : member?.roleType === 'director' ? 'Diretor' : 'Voluntário')}</span>
+                      ${member?.phone ? `
+                        <span>•</span>
+                        <span class="font-mono text-[10px] text-slate-400">${escapeHTML(member.phone)}</span>
+                      ` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Função e Ações de Ajuste / Remoção -->
+                <div class="flex items-center gap-2 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800/80">
+                  <!-- Seletor de Troca Rápida de Função -->
+                  <select
+                    onchange="changeVolunteerRoleInSchedule('${sched.id}', '${a.roleId}', this.value)"
+                    title="Trocar a função deste voluntário na escala"
+                    class="bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl px-2.5 py-1.5 text-[11px] text-white font-semibold focus:outline-none max-w-[150px]">
+                    ${state.roles.map(r => `
+                      <option value="${r.id}" ${r.id === a.roleId ? 'selected' : ''}>
+                        ${escapeHTML(r.shortName)}
+                      </option>
+                    `).join('')}
+                  </select>
+
+                  <!-- Toggle Confirmado / Pendente -->
+                  <button
+                    type="button"
+                    onclick="toggleAssignmentStatus('${sched.id}', '${a.roleId}', '${isConfirmed ? 'pending' : 'confirmed'}'); renderAdjustScheduleModalContent('${sched.id}');"
+                    title="${isConfirmed ? 'Confirmado (Clique para alterar para Pendente)' : 'Pendente (Clique para confirmar)'}"
+                    class="p-2 rounded-xl border text-xs font-bold transition ${
+                      isConfirmed
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                        : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                    }">
+                    <i data-lucide="${isConfirmed ? 'check' : 'clock'}" class="w-3.5 h-3.5"></i>
+                  </button>
+
+                  <!-- BOTÃO REMOVER VOLUNTÁRIO DA ESCALA -->
+                  <button
+                    type="button"
+                    onclick="removeVolunteerAssignment('${sched.id}', '${a.roleId}')"
+                    title="Remover ${escapeHTML(member?.name || 'voluntário')} desta escala"
+                    class="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition">
+                    <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
+                    <span>Remover</span>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `}
+    </div>
+  `;
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function addVolunteerToScheduleSubmit(event, scheduleId) {
+  if (event) event.preventDefault();
+  const schedule = state.schedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  const memberSelect = document.getElementById('adjust-add-member');
+  const roleSelect = document.getElementById('adjust-add-role');
+  const statusSelect = document.getElementById('adjust-add-status');
+
+  const memberId = memberSelect?.value;
+  const roleId = roleSelect?.value;
+  const status = statusSelect?.value || 'confirmed';
+
+  if (!memberId) {
+    showToast('Por favor, selecione um voluntário.', 'rose');
+    return;
+  }
+  if (!roleId) {
+    showToast('Por favor, selecione a função na escala.', 'rose');
+    return;
+  }
+
+  const member = getMemberById(memberId);
+  const role = getRoleById(roleId);
+
+  // Check if someone is already in this role
+  const existingAssign = schedule.assignments.find(a => a.roleId === roleId);
+  if (existingAssign && existingAssign.memberId !== memberId) {
+    const prevMember = getMemberById(existingAssign.memberId);
+    if (!confirm(`A função "${role.shortName}" já está ocupada por ${prevMember ? prevMember.name : 'outro voluntário'}.\nDeseja substituir por ${member.name}?`)) {
+      return;
+    }
+    existingAssign.memberId = memberId;
+    existingAssign.status = status;
+  } else if (existingAssign && existingAssign.memberId === memberId) {
+    existingAssign.status = status;
+  } else {
+    // Check if member is already assigned in another role
+    const dup = schedule.assignments.find(a => a.memberId === memberId);
+    if (dup) {
+      const dupRole = getRoleById(dup.roleId);
+      if (!confirm(`${member.name} já está escalado(a) em "${dupRole.shortName}".\n\nDeseja escalar também na função "${role.shortName}"?`)) {
+        return;
+      }
+    }
+    schedule.assignments.push({
+      roleId,
+      memberId,
+      status
+    });
+  }
+
+  saveData();
+  renderApp();
+  renderAdjustScheduleModalContent(scheduleId);
+  showToast(`${member.name} adicionado(a) à escala na função ${role.shortName}!`, 'emerald');
+}
+
+function removeVolunteerAssignment(scheduleId, roleId) {
+  const schedule = state.schedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  const idx = schedule.assignments.findIndex(a => a.roleId === roleId);
+  if (idx !== -1) {
+    const member = getMemberById(schedule.assignments[idx].memberId);
+    const role = getRoleById(roleId);
+    schedule.assignments.splice(idx, 1);
+    saveData();
+    renderApp();
+    renderAdjustScheduleModalContent(scheduleId);
+    showToast(`${member ? member.name : 'Voluntário'} removido(a) da escala com sucesso!`, 'amber');
+  }
+}
+
+function changeVolunteerRoleInSchedule(scheduleId, oldRoleId, newRoleId) {
+  if (oldRoleId === newRoleId) return;
+  const schedule = state.schedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  const currentAssign = schedule.assignments.find(a => a.roleId === oldRoleId);
+  if (!currentAssign) return;
+
+  const targetOccupied = schedule.assignments.find(a => a.roleId === newRoleId);
+  if (targetOccupied) {
+    const targetMember = getMemberById(targetOccupied.memberId);
+    const newRole = getRoleById(newRoleId);
+    if (!confirm(`A função "${newRole.shortName}" já está ocupada por ${targetMember ? targetMember.name : 'outro voluntário'}.\nDeseja inverter as funções entre eles?`)) {
+      renderAdjustScheduleModalContent(scheduleId);
+      return;
+    }
+    targetOccupied.roleId = oldRoleId;
+    currentAssign.roleId = newRoleId;
+  } else {
+    currentAssign.roleId = newRoleId;
+  }
+
+  saveData();
+  renderApp();
+  renderAdjustScheduleModalContent(scheduleId);
+  showToast('Função do voluntário na escala atualizada!', 'cyan');
+}
+
+function clearAllVolunteersFromSchedule(scheduleId) {
+  const schedule = state.schedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  if (schedule.assignments.length === 0) {
+    showToast('A escala já está sem nenhum voluntário.', 'cyan');
+    return;
+  }
+
+  if (!confirm(`Tem certeza que deseja remover TODOS os ${schedule.assignments.length} voluntários desta escala?\n\nTodas as vagas deste culto ficarão abertas.`)) {
+    return;
+  }
+
+  schedule.assignments = [];
+  saveData();
+  renderApp();
+  renderAdjustScheduleModalContent(scheduleId);
+  showToast('Todos os voluntários foram removidos da escala!', 'amber');
+}
+
 function handleSaveSchedule(e) {
   e.preventDefault();
   const title = document.getElementById('sched-title').value.trim();
@@ -5775,8 +6162,10 @@ function renderBirthdayWidget() {
 
 function renderSchedulesTab() {
   const logged = getLoggedInUser();
-  const canMark = canMarkAttendanceUser(logged);
-  const isDirector = state.mode === 'director';
+  const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(effectiveUser);
+  const canMark = canMarkAttendanceUser(effectiveUser);
+  const isDirector = state.mode === 'director' || canManage;
   const selected = state.schedules.find(s => s.id === state.selectedScheduleId) || state.schedules[0];
 
   // Top KPI strip
@@ -5821,6 +6210,15 @@ function renderSchedulesTab() {
             ` : ''}
 
             ${isDirector ? `
+              ${selected ? `
+                <button
+                  onclick="openAdjustScheduleModal('${selected.id}')"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition"
+                  title="Adicionar ou remover voluntários da escala deste culto">
+                  <i data-lucide="sliders" class="w-4 h-4"></i>
+                  <span>Ajustar Escala</span>
+                </button>
+              ` : ''}
               <button
                 onclick="openNewScheduleModal()"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs sm:text-sm shadow-lg glow-gold hover:brightness-110 transition">
@@ -6001,9 +6399,16 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
           </p>
         </div>
 
-        <!-- Quick Actions: Auto-fill, WhatsApp Export, Delete -->
+        <!-- Quick Actions: Adjust, Auto-fill, WhatsApp Export, Delete -->
         <div class="flex flex-wrap items-center gap-2">
           ${isDirector ? `
+            <button
+              onclick="openAdjustScheduleModal('${sched.id}')"
+              class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition"
+              title="Adicionar ou remover voluntários desta escala com 1 clique">
+              <i data-lucide="sliders" class="w-4 h-4"></i>
+              <span>⚙️ Ajustar Escala</span>
+            </button>
             <button
               onclick="autoFillSchedule('${sched.id}')"
               class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition"
@@ -6172,6 +6577,13 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                                 <i data-lucide="send" class="w-3.5 h-3.5"></i>
                               </button>
                             ` : ''}
+                            <button
+                              type="button"
+                              onclick="removeVolunteerAssignment('${sched.id}', '${role.id}')"
+                              title="Remover ${escapeHTML(assignedMember ? assignedMember.name : 'voluntário')} desta função na escala"
+                              class="p-2 rounded-xl border border-rose-500/30 bg-rose-500/15 text-rose-300 hover:bg-rose-500/30 transition">
+                              <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
+                            </button>
                           ` : ''}
                         </div>
                       ` : `

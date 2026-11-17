@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v33-assinatura-limpa-cantina-frequencia-lider';
+const CACHE_NAME = 'ad-midia-hub-cache-v34-ajuste-de-escala-adicionar-remover-voluntarios';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

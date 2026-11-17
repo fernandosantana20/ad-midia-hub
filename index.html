@@ -1173,6 +1173,52 @@
     </div>
   </div>
 
+  <!-- MODAL: AJUSTAR ESCALA (ADICIONAR OU REMOVER VOLUNTÁRIOS) -->
+  <div id="modal-adjust-schedule" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel rounded-3xl max-w-2xl w-full p-4 sm:p-6 border border-cyan-500/40 animate-view space-y-5 max-h-[95vh] overflow-y-auto">
+      
+      <!-- Top Title Bar -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow glow-cyan">
+            <i data-lucide="sliders" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h3 id="adjust-schedule-title" class="text-base sm:text-lg font-display font-extrabold text-white">Ajustar Escala</h3>
+              <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Gestão Rápida</span>
+            </div>
+            <p id="adjust-schedule-subtitle" class="text-[11px] text-slate-400">Adicione ou remova voluntários desta escala com 1 clique</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onclick="closeAdjustScheduleModal()"
+          class="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Content Container populated dynamically -->
+      <div id="adjust-schedule-container" class="space-y-5">
+        <!-- Rendered via renderAdjustScheduleModalContent() -->
+      </div>
+
+      <!-- Rodapé -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
+        <span id="adjust-schedule-count" class="text-slate-400 font-semibold">0 voluntários escalados</span>
+        <button
+          type="button"
+          onclick="closeAdjustScheduleModal()"
+          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-extrabold text-xs shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition">
+          Concluir Ajustes
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <script src="./data.js"></script>
   <script src="./app.js"></script>
 </body>
