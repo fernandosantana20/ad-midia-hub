@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v36-design-humano-verificacao-rotinas';
+const CACHE_NAME = 'ad-midia-hub-cache-v37-modo-claro-modo-escuro-cores-humanas';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

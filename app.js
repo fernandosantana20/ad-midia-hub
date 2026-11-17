@@ -9,7 +9,8 @@ const STORAGE_KEYS = {
   MODE: 'ad_midia_mode_v9_qr',
   ACTIVE_MEMBER: 'ad_midia_active_member_v9_qr',
   AUTH_EMAIL: 'ad_midia_auth_email_v9_qr',
-  XP_RESET_DONE: 'ad_midia_xp_reset_v9'
+  XP_RESET_DONE: 'ad_midia_xp_reset_v9',
+  THEME: 'ad_midia_theme'
 };
 
 const ROLE_COLOR_THEMES = {
@@ -35,6 +36,7 @@ const AVATAR_GRADIENTS = [
 ];
 
 const state = {
+  theme: localStorage.getItem(STORAGE_KEYS.THEME) || 'dark',
   authEmail: localStorage.getItem(STORAGE_KEYS.AUTH_EMAIL) || '',
   mode: localStorage.getItem(STORAGE_KEYS.MODE) || 'director', // 'director' | 'team'
   activeMemberId: localStorage.getItem(STORAGE_KEYS.ACTIVE_MEMBER) || 'm1',
@@ -62,6 +64,41 @@ const state = {
     customRows: [] // [{ id, name, value, signature }]
   }
 };
+
+// ============================================================================
+// GESTÃO DE TEMA: MODO CLARO & MODO ESCURO (COM CORES HUMANAS E ACOLHEDORAS)
+// ============================================================================
+
+function applyTheme(theme) {
+  state.theme = theme === 'light' ? 'light' : 'dark';
+  try {
+    localStorage.setItem(STORAGE_KEYS.THEME, state.theme);
+  } catch (e) {}
+  const root = document.documentElement;
+  if (state.theme === 'light') {
+    root.classList.remove('dark');
+    root.classList.add('light');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', '#f6f8fb');
+  } else {
+    root.classList.remove('light');
+    root.classList.add('dark');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', '#0d1320');
+  }
+}
+
+function toggleTheme() {
+  const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(nextTheme);
+  renderApp();
+  showToast(
+    nextTheme === 'dark' 
+      ? '🌙 Modo Escuro (Cores Acolhedoras) ativado!' 
+      : '☀️ Modo Claro (Luminoso & Limpo) ativado!', 
+    'amber'
+  );
+}
 
 // ============================================================================
 // PERMISSÕES E PRIVACIDADE DE ACESSO (RBAC)
@@ -5674,7 +5711,7 @@ function renderHeader() {
       : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Modo Offline Local</span>`;
 
   return `
-    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#0a0e17]/95 backdrop-blur-md shadow-lg">
+    <header class="sticky top-0 z-30 border-b backdrop-blur-md shadow-md">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         
         <!-- Brand Identity -->
@@ -5682,14 +5719,14 @@ function renderHeader() {
           <div class="flex items-center gap-3.5">
             <div class="relative w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm">
               <i data-lucide="flame" class="w-6 h-6 text-amber-400"></i>
-              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0a0e17]"></span>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[var(--bg-deep)]"></span>
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-amber-300 bg-clip-text text-transparent">
+                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">
                   AD MÍDIA HUB
                 </span>
-                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                   Assembleia de Deus
                 </span>
                 ${cloudBadge}
@@ -5698,9 +5735,18 @@ function renderHeader() {
             </div>
           </div>
 
-          <button onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="lg:hidden p-2 rounded-xl border border-slate-800 text-cyan-300 hover:bg-slate-800">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-          </button>
+          <!-- Mobile Quick Actions -->
+          <div class="flex items-center gap-2 lg:hidden">
+            <button
+              onclick="toggleTheme()"
+              title="${state.theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}"
+              class="p-2 rounded-xl border border-slate-700/80 hover:bg-slate-800/80 text-amber-400 transition">
+              <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-4 h-4"></i>
+            </button>
+            <button onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="p-2 rounded-xl border border-slate-700/80 text-cyan-300 hover:bg-slate-800">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Mode Switcher & User Identity -->
@@ -5777,6 +5823,19 @@ function renderHeader() {
               <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
             </button>
           </div>
+
+          <!-- Theme Switcher (Claro & Escuro com cores humanas) -->
+          <button
+            onclick="toggleTheme()"
+            title="${state.theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro (Cores Acolhedoras)'}"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-xl border transition shadow-sm ${
+              state.theme === 'dark'
+                ? 'border-slate-800/90 bg-slate-900/80 text-amber-300 hover:border-amber-500/40'
+                : 'border-slate-200 bg-slate-100/90 text-slate-700 hover:border-amber-500/50 hover:bg-slate-200/80'
+            }">
+            <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-3.5 h-3.5 ${state.theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}"></i>
+            <span class="text-xs font-bold hidden sm:inline">${state.theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+          </button>
 
           <button
             onclick="syncFromCloud(false)"
@@ -8277,6 +8336,7 @@ function renderApp() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  applyTheme(state.theme);
   loadData();
   renderApp();
   syncFromCloud(true);

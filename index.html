@@ -3,16 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0a0e17" />
+  <meta name="theme-color" content="#0d1320" />
   <title>AD Mídia Hub — Gestão de Escalas & Voluntários</title>
   <link rel="manifest" href="./manifest.json" />
+  <script>
+    // Inicialização imediata do tema para evitar qualquer cintilação visual (FOUC)
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem('ad_midia_theme') || 'dark';
+        if (savedTheme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        } else {
+          document.documentElement.classList.remove('light');
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <script>
+    tailwind = {
+      config: {
+        darkMode: 'class'
+      }
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer></script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body class="min-h-screen bg-[#0a0e17] text-slate-100 selection:bg-amber-500 selection:text-slate-950">
+<body class="min-h-screen selection:bg-amber-500 selection:text-slate-950">
 
   <!-- Dynamic Application Root -->
   <div id="app-root"></div>
