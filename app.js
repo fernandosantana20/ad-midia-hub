@@ -137,7 +137,7 @@ function enforcePrivacyState() {
     // Voluntário comum: trava no próprio perfil e na visão Equipe
     state.mode = 'team';
     state.activeMemberId = logged.id;
-    if (state.activeTab === 'members') {
+    if (state.activeTab === 'members' || state.activeTab === 'reports') {
       state.activeTab = 'my_area';
     }
   }
@@ -5562,6 +5562,9 @@ function deleteMember(memberId) {
   state.schedules.forEach(s => {
     s.assignments = s.assignments.filter(a => a.memberId !== memberId);
   });
+  if (state.activeMemberId === memberId) {
+    state.activeMemberId = state.members[0]?.id || 'm1';
+  }
   saveData();
   renderApp();
   showToast('Membro removido da equipe.', 'rose');
@@ -5671,19 +5674,19 @@ function renderHeader() {
       : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Modo Offline Local</span>`;
 
   return `
-    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#050811] shadow-2xl">
+    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#0a0e17]/95 backdrop-blur-md shadow-lg">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         
         <!-- Brand Identity -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3.5">
-            <div class="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-amber-500/20 border border-cyan-400/40 flex items-center justify-center glow-cyan">
+            <div class="relative w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm">
               <i data-lucide="flame" class="w-6 h-6 text-amber-400"></i>
-              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-400 border-2 border-[#050811]"></span>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0a0e17]"></span>
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-cyan-200 to-amber-300 bg-clip-text text-transparent">
+                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-amber-300 bg-clip-text text-transparent">
                   AD MÍDIA HUB
                 </span>
                 <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
@@ -5691,7 +5694,7 @@ function renderHeader() {
                 </span>
                 ${cloudBadge}
               </div>
-              <p class="text-xs text-slate-400">Central Futurista de Escalas, Broadcast & Produção</p>
+              <p class="text-xs text-slate-400">Gestão de Escalas, Produção & Comunicação</p>
             </div>
           </div>
 
@@ -5710,11 +5713,11 @@ function renderHeader() {
                 onclick="setMode('director')"
                 class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   isDirector
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-lg glow-gold'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md font-bold'
                     : 'text-slate-400 hover:text-white'
                 }">
                 <i data-lucide="shield-check" class="w-4 h-4"></i>
-                <span>Visão Diretor</span>
+                <span>Visão da Liderança</span>
                 ${swapAlerts > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white">${swapAlerts}</span>` : ''}
               </button>
 
@@ -5722,11 +5725,11 @@ function renderHeader() {
                 onclick="setMode('team')"
                 class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   !isDirector
-                    ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 shadow-lg glow-cyan'
+                    ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-md font-bold'
                     : 'text-slate-400 hover:text-white'
                 }">
                 <i data-lucide="user-check" class="w-4 h-4"></i>
-                <span>Visão Equipe (Simular)</span>
+                <span>Visão da Equipe</span>
               </button>
             </div>
           ` : `
@@ -5810,18 +5813,18 @@ function renderHeader() {
             onclick="setActiveTab('my_area')"
             class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
               state.activeTab === 'my_area'
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
             }">
             <i data-lucide="smartphone" class="w-4 h-4"></i>
-            <span>Meu Perfil & QR Code</span>
+            <span>Meu Perfil & Credencial</span>
           </button>
 
           <button
             onclick="setActiveTab('schedules')"
             class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
               state.activeTab === 'schedules'
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
             }">
             <i data-lucide="calendar-Check-2" class="w-4 h-4"></i>
@@ -5833,11 +5836,11 @@ function renderHeader() {
               onclick="setActiveTab('members')"
               class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
                 state.activeTab === 'members'
-                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
               }">
               <i data-lucide="users" class="w-4 h-4"></i>
-              <span>Cadastros (${totalMembers})</span>
+              <span>Voluntários (${totalMembers})</span>
             </button>
           ` : ''}
 
@@ -5845,7 +5848,7 @@ function renderHeader() {
             onclick="setActiveTab('roles')"
             class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
               state.activeTab === 'roles'
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
             }">
             <i data-lucide="layers" class="w-4 h-4"></i>
@@ -5860,7 +5863,7 @@ function renderHeader() {
                 : 'text-slate-400 hover:text-emerald-200 hover:bg-slate-900/50'
             }">
             <i data-lucide="qr-code" class="w-4 h-4 text-emerald-400"></i>
-            <span>Frequência QR Code</span>
+            <span>Frequência & QR</span>
           </button>
 
           ${canManage ? `
@@ -5884,7 +5887,7 @@ function renderHeader() {
                 : 'text-slate-400 hover:text-amber-200 hover:bg-slate-900/50'
             }">
             <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
-            <span>Ranking & XP</span>
+            <span>Destaques & Equipe</span>
           </button>
         </nav>
 
@@ -5893,9 +5896,9 @@ function renderHeader() {
             <button
               onclick="openScanAttendanceModal()"
               title="Ativar câmera do celular para escanear QR Code e marcar frequência"
-              class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-extrabold shadow-lg glow-emerald transition shrink-0">
+              class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-extrabold shadow-md transition shrink-0">
               <i data-lucide="scan-line" class="w-4 h-4"></i>
-              <span>Marcar Frequência QR</span>
+              <span>Frequência Rápida</span>
             </button>
           ` : ''}
 
@@ -6170,11 +6173,33 @@ function getBirthdayData(members = state.members) {
 
   members.forEach(member => {
     if (!member.birthDate) return;
-    const parts = member.birthDate.split('-');
-    if (parts.length !== 3) return;
-    const birthYear = parseInt(parts[0], 10);
-    const birthMonth = parseInt(parts[1], 10) - 1;
-    const birthDay = parseInt(parts[2], 10);
+    const cleanDate = String(member.birthDate).trim();
+    let birthYear, birthMonth, birthDay;
+
+    if (cleanDate.includes('/')) {
+      const parts = cleanDate.split('/');
+      if (parts.length === 3) {
+        birthDay = parseInt(parts[0], 10);
+        birthMonth = parseInt(parts[1], 10) - 1;
+        birthYear = parseInt(parts[2], 10);
+      }
+    } else if (cleanDate.includes('-')) {
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          birthYear = parseInt(parts[0], 10);
+          birthMonth = parseInt(parts[1], 10) - 1;
+          birthDay = parseInt(parts[2], 10);
+        } else {
+          birthDay = parseInt(parts[0], 10);
+          birthMonth = parseInt(parts[1], 10) - 1;
+          birthYear = parseInt(parts[2], 10);
+        }
+      }
+    }
+
+    if (isNaN(birthYear) || isNaN(birthMonth) || isNaN(birthDay)) return;
+    if (birthMonth < 0 || birthMonth > 11 || birthDay < 1 || birthDay > 31) return;
 
     // Data de aniversário no ano atual
     const bdayThisYear = new Date(currentYear, birthMonth, birthDay);
@@ -7773,17 +7798,17 @@ function renderAttendanceTab() {
         
         <!-- Left Column: My Personal QR Pass Card -->
         <div class="lg:col-span-5 space-y-4">
-          <div class="glass-panel rounded-3xl p-6 border border-cyan-500/35 text-center space-y-4">
+          <div class="glass-panel rounded-3xl p-6 border border-amber-500/30 text-center space-y-4">
             <div class="flex items-center justify-center gap-3">
               ${renderMemberAvatar(myMember, 'w-12 h-12 rounded-2xl text-sm', false)}
               <div class="text-left">
-                <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold block">Passaporte QR Individual</span>
+                <span class="text-[10px] uppercase tracking-wider text-amber-400 font-bold block">Credencial do Voluntário</span>
                 <h3 class="text-lg font-display font-extrabold text-white">${escapeHTML(myMember.name)}</h3>
                 <p class="text-xs text-slate-400">${escapeHTML(myMember.title)}</p>
               </div>
             </div>
 
-            <div class="p-4 rounded-2xl bg-white border-4 border-emerald-400 inline-block mx-auto shadow-2xl">
+            <div class="p-4 rounded-2xl bg-white border-4 border-amber-400/80 inline-block mx-auto shadow-2xl">
               <img
                 src="${getQrCodeImageUrl(myMember.qrToken, 240)}"
                 alt="QR Code ${escapeHTML(myMember.name)}"
@@ -7792,7 +7817,7 @@ function renderAttendanceTab() {
 
             <div>
               <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Código Único do Voluntário</span>
-              <code class="text-xs font-mono font-bold text-emerald-300 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 inline-block mt-1">
+              <code class="text-xs font-mono font-bold text-amber-300 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 inline-block mt-1">
                 ${escapeHTML(myMember.qrToken)}
               </code>
             </div>
@@ -7800,13 +7825,13 @@ function renderAttendanceTab() {
             <button
               type="button"
               onclick="downloadMemberQrBadgeImage('${myMember.id}')"
-              class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:brightness-110 text-slate-950 font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition">
+              class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition">
               <i data-lucide="download" class="w-4 h-4"></i>
-              <span>Salvar Passaporte QR na Galeria (PNG)</span>
+              <span>Salvar Cartão de Credencial (PNG)</span>
             </button>
 
             <p class="text-xs text-slate-400">
-              Apresente este QR Code ao Diretor ou Voluntário Autorizado na chegada ao culto para registrar sua presença no evento e pontuar <strong>+150 XP</strong>!
+              Apresente este QR Code ao líder na chegada ao culto para registrar sua presença e pontualidade no evento.
             </p>
           </div>
         </div>

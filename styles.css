@@ -1,13 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-deep: #050811;
-  --bg-card: rgba(14, 21, 38, 0.72);
-  --bg-card-hover: rgba(20, 30, 54, 0.85);
-  --border-glass: rgba(148, 163, 184, 0.14);
-  --accent-cyan: #00f0ff;
-  --accent-gold: #f59e0b;
+  --bg-deep: #0a0e17;
+  --bg-card: rgba(19, 27, 44, 0.88);
+  --bg-card-hover: rgba(26, 36, 58, 0.95);
+  --border-glass: rgba(148, 163, 184, 0.12);
+  --accent-amber: #f59e0b;
+  --accent-teal: #14b8a6;
   --accent-blue: #3b82f6;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
 }
 
 * {
@@ -18,103 +20,103 @@
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-deep);
-  color: #f1f5f9;
+  color: var(--text-main);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.12), transparent 32%),
-    radial-gradient(circle at 88% 15%, rgba(245, 158, 11, 0.10), transparent 30%),
-    radial-gradient(circle at 50% 85%, rgba(99, 102, 241, 0.09), transparent 40%);
+    radial-gradient(circle at 18% 12%, rgba(245, 158, 11, 0.05), transparent 36%),
+    radial-gradient(circle at 82% 16%, rgba(20, 184, 166, 0.05), transparent 34%),
+    radial-gradient(circle at 50% 90%, rgba(59, 130, 246, 0.04), transparent 45%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, .font-display {
   font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.015em;
 }
 
-/* Futuristic Grid Overlay */
+/* Sutil textura de fundo limpa e elegante */
 .bg-grid-pattern {
-  background-size: 36px 36px;
+  background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
 }
 
-/* Glassmorphism Cards */
+/* Cartões modernos com design acolhedor e alta legibilidade */
 .glass-panel {
   background: var(--bg-card);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-glass);
-  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.15);
 }
 
 .glass-panel-interactive {
   background: var(--bg-card);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-glass);
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.28);
 }
 
 .glass-panel-interactive:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(56, 189, 248, 0.35);
+  border-color: rgba(245, 158, 11, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px -8px rgba(0, 240, 255, 0.12);
+  box-shadow: 0 8px 26px -4px rgba(0, 0, 0, 0.45);
 }
 
-/* Neon Glow Accents */
-.glow-cyan {
-  box-shadow: 0 0 22px rgba(56, 189, 248, 0.32);
+/* Substituição dos neons artificiais por elevações suaves e elegantes */
+.glow-cyan, .glow-gold, .glow-emerald, .glow-pink {
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.35);
 }
 
-.glow-gold {
-  box-shadow: 0 0 22px rgba(245, 158, 11, 0.32);
+/* Feedback tátil nos botões */
+button:active {
+  transform: scale(0.98);
 }
 
-.glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-}
-
-/* Custom Scrollbar */
+/* Custom Scrollbar elegante e discreta */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.3);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(100, 116, 139, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.6);
+  background: rgba(148, 163, 184, 0.55);
 }
 
-/* Pulse live indicator */
-@keyframes pulse-ring {
-  0% { transform: scale(0.85); opacity: 0.9; }
-  70% { transform: scale(2); opacity: 0; }
-  100% { transform: scale(2.2); opacity: 0; }
+/* Indicador ao vivo sutil */
+@keyframes pulse-soft {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 0.4; }
+  100% { transform: scale(0.9); opacity: 0.9; }
 }
 
 .live-dot::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -2px;
   border-radius: 9999px;
   background-color: currentColor;
-  animation: pulse-ring 2s infinite;
+  animation: pulse-soft 2.4s ease-in-out infinite;
 }
 
-/* Animations */
+/* Transições de entrada suaves */
 @keyframes fadeInSlide {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -123,21 +125,22 @@ h1, h2, h3, h4, .font-display {
 }
 
 .animate-view {
-  animation: fadeInSlide 0.25s ease-out forwards;
+  animation: fadeInSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes scanLaser {
-  0% { top: 12%; opacity: 0.8; }
-  50% { top: 86%; opacity: 1; }
-  100% { top: 12%; opacity: 0.8; }
+/* Linha de mira do scanner elegante e natural */
+@keyframes scanGuide {
+  0% { top: 18%; opacity: 0.6; }
+  50% { top: 82%; opacity: 0.9; }
+  100% { top: 18%; opacity: 0.6; }
 }
 
 .scanner-laser-line {
   position: absolute;
-  left: 6%;
-  right: 6%;
+  left: 8%;
+  right: 8%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #10b981, #00f0ff, #10b981, transparent);
-  box-shadow: 0 0 14px #10b981, 0 0 6px #00f0ff;
-  animation: scanLaser 2.2s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, #10b981, #14b8a6, transparent);
+  border-radius: 9999px;
+  animation: scanGuide 2.4s ease-in-out infinite;
 }
