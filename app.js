@@ -129,6 +129,9 @@ function enforcePrivacyState() {
 // INICIALIZAÇÃO, SINCRONIZAÇÃO EM NUVEM (NETLIFY BLOBS) & PERSISTÊNCIA
 // ============================================================================
 
+const PRIMARY_CLOUD_API = window.location.origin.includes('ad-midia-hub-escala.netlify.app')
+  ? '/api/state'
+  : 'https://ad-midia-hub-escala.netlify.app/api/state';
 const CLOUD_RELAY_URL = 'https://kvdb.io/A9xK3mP7vQ2wZ8nL4rJ6tY/ad_midia_hub_global_v3_27members';
 
 async function syncFromCloud(silent = false) {
@@ -136,9 +139,9 @@ async function syncFromCloud(silent = false) {
     state.cloudSyncStatus = 'syncing';
     let cloudData = null;
 
-    // 1. Try Netlify Edge Function (/api/state)
+    // 1. Try Primary Cloud Database (Netlify Edge Blobs API)
     try {
-      const res = await fetch('/api/state', { cache: 'no-store' });
+      const res = await fetch(PRIMARY_CLOUD_API, { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json && json.ok && json.data) {
@@ -147,7 +150,7 @@ async function syncFromCloud(silent = false) {
       }
     } catch (_) {}
 
-    // 2. Fallback to Cloud Relay if Edge Function wasn't hit
+    // 2. Fallback to Cloud Relay if Primary wasn't hit
     if (!cloudData) {
       const relayRes = await fetch(CLOUD_RELAY_URL, { cache: 'no-store' });
       if (relayRes.ok) {
@@ -191,7 +194,7 @@ async function pushToCloud() {
 
   let synced = false;
   try {
-    const res = await fetch('/api/state', {
+    const res = await fetch(PRIMARY_CLOUD_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: bodyStr
