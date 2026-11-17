@@ -1740,29 +1740,6 @@ function startCameraQrScanner() {
   openScanAttendanceModal();
 }
 
-  if (!window.Html5Qrcode) {
-    showToast('Biblioteca de câmera carregando, tente novamente em 2 segundos ou use o leitor abaixo.', 'amber');
-    return;
-  }
-
-  try {
-    html5QrScanner = new window.Html5Qrcode('qr-camera-reader');
-    html5QrScanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 220, height: 220 } },
-      decodedText => {
-        stopCameraQrScanner();
-        markAttendanceByQrToken(decodedText);
-      },
-      () => {}
-    ).catch(() => {
-      showToast('Permissão de câmera negada ou indisponível. Digite/selecione o código QR manualmente abaixo.', 'amber');
-    });
-  } catch (err) {
-    showToast('Use a validação rápida de QR Code na lista abaixo.', 'amber');
-  }
-}
-
 function stopCameraQrScanner() {
   if (html5QrScanner) {
     html5QrScanner.stop().then(() => {
