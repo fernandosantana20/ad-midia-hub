@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v27-aniversariantes-e-dados-membro';
+const CACHE_NAME = 'ad-midia-hub-cache-v28-frequencia-e-relatorios-cantina';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

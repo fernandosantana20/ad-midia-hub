@@ -2443,18 +2443,48 @@ function removeAttendanceReportRow(rowId) {
   renderApp();
 }
 
+function printReportHtml(html) {
+  let printWin = null;
+  try {
+    printWin = window.open('', '_blank', 'width=980,height=850');
+  } catch (_) {}
+
+  if (printWin && printWin.document) {
+    printWin.document.write(html);
+    printWin.document.close();
+    return;
+  }
+
+  // Fallback se o navegador bloquear pop-ups
+  let iframe = document.getElementById('report-print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'report-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+  }
+  const frameDoc = iframe.contentWindow || iframe.contentDocument;
+  const doc = frameDoc.document || frameDoc;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    (iframe.contentWindow || window).focus();
+    (iframe.contentWindow || window).print();
+  }, 400);
+}
+
 function exportAttendanceReportPDF() {
   const rows = ensureAttendanceReportInitialized();
   const cfg = state.attendanceReportConfig;
   const eventHeader = `${cfg.eventDate || 'HOJE'} — ${cfg.eventTitle || 'CULTO OFICIAL ASSEMBLEIA DE DEUS'}`;
 
-  const printWin = window.open('', '_blank', 'width=980,height=820');
-  if (!printWin) {
-    showToast('Permita pop-ups no navegador para gerar o PDF de Frequência.', 'amber');
-    return;
-  }
-
-  printWin.document.write(`
+  const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
@@ -2599,8 +2629,8 @@ function exportAttendanceReportPDF() {
       <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 350); };</script>
     </body>
     </html>
-  `);
-  printWin.document.close();
+  `;
+  printReportHtml(html);
 }
 
 function exportAttendanceReportExcel() {
@@ -2842,8 +2872,8 @@ function syncReportRowsFromSelection() {
   const valDefault = cfg.defaultValue || '';
   const addedMemberIds = new Set();
 
-  if (sched && Array.isArray(sched.assignments)) {
-    // Regra Oficial da Cantina: APENAS quem está na escala DO DIA e com presença confirmada (Check-in ou QR Code no dia)
+  if (sched && Array.isArray(sched.assignments) && sched.assignments.length > 0) {
+    // Por padrão: inclui todos os voluntários escalados no culto selecionado
     sched.assignments.forEach(a => {
       const m = getMemberById(a.memberId);
       if (!m || addedMemberIds.has(m.id)) return;
@@ -2852,16 +2882,36 @@ function syncReportRowsFromSelection() {
       const hasQrInThisSchedule = logs.some(l => l.scheduleId === sched.id || l.date === sched.date);
       const isConfirmedPresent = a.status === 'confirmed' || hasQrInThisSchedule;
 
-      if (isConfirmedPresent) {
-        addedMemberIds.add(m.id);
-        const rowId = 'row_' + m.id + '_' + a.roleId;
-        rows.push({
-          id: rowId,
-          name: m.name.toUpperCase(),
-          value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
-          signature: hasQrInThisSchedule ? 'PRESENTE (QR CODE)' : 'PRESENTE NA ESCALA'
-        });
-      }
+      // Se filtro restrito de apenas confirmados estiver ativo
+      if (cfg.onlyConfirmed && !isConfirmedPresent) return;
+
+      addedMemberIds.add(m.id);
+      const rowId = 'row_' + m.id + '_' + a.roleId;
+      rows.push({
+        id: rowId,
+        name: m.name.toUpperCase(),
+        value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
+        signature: hasQrInThisSchedule
+          ? 'PRESENTE (QR CODE)'
+          : a.status === 'confirmed'
+          ? 'PRESENTE NA ESCALA'
+          : 'ESCALADO'
+      });
+    });
+  }
+
+  // Se a escala não tiver membros ou se selecionado toda a equipe
+  if (rows.length === 0 || cfg.scheduleId === 'all_members') {
+    state.members.forEach(m => {
+      if (addedMemberIds.has(m.id)) return;
+      addedMemberIds.add(m.id);
+      const rowId = 'row_all_' + m.id;
+      rows.push({
+        id: rowId,
+        name: m.name.toUpperCase(),
+        value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
+        signature: ''
+      });
     });
   }
 
@@ -2994,13 +3044,7 @@ function exportCanteenReportPDF() {
     }
   });
 
-  const printWin = window.open('', '_blank', 'width=900,height=800');
-  if (!printWin) {
-    showToast('Permita pop-ups no navegador para gerar o PDF da Cantina.', 'amber');
-    return;
-  }
-
-  printWin.document.write(`
+  const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
@@ -3135,8 +3179,8 @@ function exportCanteenReportPDF() {
       </script>
     </body>
     </html>
-  `);
-  printWin.document.close();
+  `;
+  printReportHtml(html);
 }
 
 function exportCanteenReportExcel() {
@@ -3398,13 +3442,7 @@ function exportMonthlyCanteenPDF() {
   const monthLabel = `${monthNames[parseInt(month, 10) - 1] || month} de ${year}`;
   const headerBanner = `FECHAMENTO MENSAL DA CANTINA — ${monthLabel.toUpperCase()}`;
 
-  const printWin = window.open('', '_blank', 'width=900,height=800');
-  if (!printWin) {
-    showToast('Permita pop-ups no navegador para gerar o PDF mensal.', 'amber');
-    return;
-  }
-
-  printWin.document.write(`
+  const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
@@ -3461,8 +3499,8 @@ function exportMonthlyCanteenPDF() {
       <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 350); };</script>
     </body>
     </html>
-  `);
-  printWin.document.close();
+  `;
+  printReportHtml(html);
 }
 
 function exportMonthlyCanteenExcel() {
@@ -3499,6 +3537,108 @@ function exportMonthlyCanteenExcel() {
   }
 
   showToast('Exportando fechamento...', 'cyan');
+}
+
+function renderMonthlyCanteenReportGenerator() {
+  const summary = getMonthlyCanteenSummary();
+  const [year, month] = summary.monthStr.split('-');
+  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const monthLabel = `${monthNames[parseInt(month, 10) - 1] || month} de ${year}`;
+
+  return `
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-yellow-500/40 space-y-5 relative overflow-hidden bg-slate-900/60">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-lg glow-gold shrink-0">
+            <i data-lucide="calendar-range" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-lg sm:text-xl font-display font-extrabold text-white">
+                3. Fechamento Mensal Consolidado da Cantina
+              </h2>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
+                Consolidado do Mês
+              </span>
+            </div>
+            <p class="text-xs text-slate-400">
+              Soma total de presenças e valor de lanche acumulado por voluntário em todos os cultos do mês de <strong>${escapeHTML(monthLabel)}</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onclick="exportMonthlyCanteenPDF()"
+            class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+            <span>Gerar PDF Mensal</span>
+          </button>
+
+          <button
+            type="button"
+            onclick="exportMonthlyCanteenExcel()"
+            class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-yellow-500/40 font-extrabold text-xs sm:text-sm flex items-center gap-2 transition">
+            <i data-lucide="table" class="w-4 h-4"></i>
+            <span>Baixar Excel Mensal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs Mensais -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Cultos Realizados</span>
+          <strong class="text-lg sm:text-xl font-display font-extrabold text-cyan-400">${summary.totalServicesCount}</strong>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Voluntários Atendidos</span>
+          <strong class="text-lg sm:text-xl font-display font-extrabold text-white">${summary.grandTotalVolunteers}</strong>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Lanches Consumidos</span>
+          <strong class="text-lg sm:text-xl font-display font-extrabold text-amber-400">${summary.grandTotalSnacks}</strong>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Valor Total (R$)</span>
+          <strong class="text-lg sm:text-xl font-display font-extrabold text-emerald-400">R$ ${summary.grandTotalMoney.toFixed(2).replace('.', ',')}</strong>
+        </div>
+      </div>
+
+      <!-- Tabela Resumo do Mês -->
+      <div class="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
+        <div class="overflow-x-auto max-h-80">
+          ${summary.memberRows.length === 0 ? `
+            <div class="p-6 text-center text-slate-400 text-xs">
+              Nenhuma presença registrada via QR Code ou escala no mês selecionado (${monthLabel}).
+            </div>
+          ` : `
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-900 text-slate-300 font-bold uppercase tracking-wider border-b border-slate-800">
+                  <th class="py-2.5 px-4">Voluntário</th>
+                  <th class="py-2.5 px-4 text-center">Cultos Presentes</th>
+                  <th class="py-2.5 px-4 text-center">Valor Total</th>
+                  <th class="py-2.5 px-4 text-center">Datas</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/80">
+                ${summary.memberRows.map(r => `
+                  <tr class="hover:bg-slate-900/50">
+                    <td class="py-2.5 px-4 font-bold text-white">${escapeHTML(r.name)}</td>
+                    <td class="py-2.5 px-4 text-center text-amber-300 font-semibold">${r.count} culto(s)</td>
+                    <td class="py-2.5 px-4 text-center text-emerald-300 font-mono font-bold">R$ ${r.totalValue.toFixed(2).replace('.', ',')}</td>
+                    <td class="py-2.5 px-4 text-center text-slate-400 text-[11px]">${escapeHTML(r.dates)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderCanteenAndAttendanceReportGenerator() {
@@ -3727,26 +3867,12 @@ function setMode(newMode) {
 
 function setActiveTab(tab) {
   const logged = getLoggedInUser();
-  if (!isPrivilegedUser(logged) && tab === 'members') {
-    showToast('Privacidade ativa: apenas a liderança pode visualizar o cadastro de outros usuários.', 'rose');
+  if (!isPrivilegedUser(logged) && (tab === 'members' || tab === 'reports')) {
+    showToast('Privacidade ativa: apenas a liderança pode visualizar esta área.', 'rose');
     return;
   }
   state.activeTab = tab;
   renderApp();
-
-  // Ao clicar na aba de Frequência QR Code:
-  // Se for autorizado a marcar (Diretor, Dev, Líder, Marcador), abre o leitor de QR Code com câmera!
-  // Se for voluntário regular, abre imediatamente o seu QR Code individual para ser escaneado!
-  if (tab === 'attendance') {
-    setTimeout(() => {
-      if (canMarkAttendanceUser(logged)) {
-        openScanAttendanceModal();
-      } else {
-        const myMem = logged || state.members[0];
-        if (myMem) openQrModal(myMem.id);
-      }
-    }, 150);
-  }
 }
 
 function setActiveMember(memberId, redirectToTab = null) {
@@ -4751,6 +4877,19 @@ function renderHeader() {
             <i data-lucide="qr-code" class="w-4 h-4 text-emerald-400"></i>
             <span>Frequência QR Code</span>
           </button>
+
+          ${canManage ? `
+            <button
+              onclick="setActiveTab('reports')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
+                state.activeTab === 'reports'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'text-slate-400 hover:text-amber-200 hover:bg-slate-900/50'
+              }">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-400"></i>
+              <span>Relatórios & Cantina</span>
+            </button>
+          ` : ''}
 
           <button
             onclick="setActiveTab('ranking')"
@@ -6971,6 +7110,60 @@ function renderGmailLoginScreen() {
 }
 
 // ============================================================================
+// ABA 7: CENTRAL DE RELATÓRIOS OFICIAIS & LISTA DA CANTINA
+// ============================================================================
+
+function renderReportsAndCanteenTab() {
+  const loggedUser = getLoggedInUser();
+  const canManage = isPrivilegedUser(loggedUser);
+  if (!canManage) {
+    return renderMyAreaTab();
+  }
+
+  return `
+    <div class="space-y-6 animate-view">
+      <!-- Storyboard de Quantidade de Voluntários e Funções -->
+      ${renderVolunteersRolesStoryboard()}
+
+      <!-- Top Action Banner -->
+      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/35 relative overflow-hidden bg-gradient-to-br from-amber-950/20 via-slate-900/60 to-yellow-950/20 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 mb-2">
+              <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+              <span>CENTRAL OFICIAL DE RELATÓRIOS & CANTINA</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-display font-extrabold text-white">
+              Relatórios Oficiais & Lista da Cantina
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">
+              Gere e imprima em PDF ou exporte em Excel a Lista da Cantina com assinatura e o Relatório de Frequência do Culto.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button
+              onclick="exportCanteenReportPDF()"
+              class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+              <span>Imprimir Lista Cantina</span>
+            </button>
+            <button
+              onclick="exportAttendanceReportPDF()"
+              class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+              <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+              <span>Imprimir Relatório Frequência</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Relatórios e Lista da Cantina -->
+      ${renderCanteenAndAttendanceReportGenerator()}
+    </div>
+  `;
+}
+
+// ============================================================================
 // RENDERIZAÇÃO PRINCIPAL
 // ============================================================================
 
@@ -6997,6 +7190,8 @@ function renderApp() {
     mainContent = renderRolesTab();
   } else if (state.activeTab === 'attendance') {
     mainContent = renderAttendanceTab();
+  } else if (state.activeTab === 'reports') {
+    mainContent = renderReportsAndCanteenTab();
   } else if (state.activeTab === 'ranking') {
     mainContent = renderRankingTab();
   }
