@@ -226,6 +226,14 @@
                 <input type="file" accept="image/*" class="hidden" onchange="handleModalPhotoSelected(event)" />
               </label>
               <button
+                id="member-photo-crop-btn"
+                type="button"
+                onclick="openCropperForCurrentModalPhoto()"
+                class="hidden px-3 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 transition">
+                <i data-lucide="crop" class="w-3.5 h-3.5"></i>
+                <span>Ajustar / Redimensionar</span>
+              </button>
+              <button
                 id="member-photo-remove-btn"
                 type="button"
                 onclick="clearModalPhoto()"
@@ -1036,6 +1044,132 @@
           Concluir / Fechar Scanner
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MINI EDITOR / REDIMENSIONADOR DE FOTO DE PERFIL -->
+  <div id="modal-image-cropper" class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel rounded-3xl max-w-md w-full p-5 sm:p-6 border border-cyan-500/40 animate-view space-y-4 shadow-2xl relative max-h-[95vh] overflow-y-auto">
+      
+      <!-- Cabeçalho -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+            <i data-lucide="crop" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-display font-extrabold text-white">Editor de Foto de Perfil</h3>
+            <p class="text-xs text-slate-400">Arraste para posicionar e use o zoom para enquadrar</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="closeImageCropper()"
+          class="p-1.5 rounded-xl bg-slate-800/90 text-slate-400 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Área de Visualização e Recorte (Canvas) -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-cyan-500/50 shadow-2xl touch-none select-none">
+          <canvas
+            id="cropper-canvas"
+            width="320"
+            height="320"
+            class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+          
+          <!-- Badge flutuante indicando modo de toque -->
+          <div class="absolute bottom-2 left-2 right-2 pointer-events-none flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-950/80 backdrop-blur-sm border border-slate-800 text-[10px] text-slate-300">
+            <span>🖱️ Arraste para mover</span>
+            <span>🤏 Pinça / Roda para Zoom</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles de Redimensionamento e Zoom -->
+      <div class="space-y-3 bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
+              <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+              <span>Redimensionar / Zoom</span>
+            </span>
+            <span id="cropper-zoom-badge" class="font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">100%</span>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              onclick="stepCropperZoom(-15)"
+              title="Diminuir Zoom"
+              class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold flex items-center justify-center shrink-0 border border-slate-700">
+              -
+            </button>
+            <input
+              id="cropper-zoom-slider"
+              type="range"
+              min="100"
+              max="350"
+              value="100"
+              step="1"
+              oninput="handleCropperZoomInput(this.value)"
+              class="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg" />
+            <button
+              type="button"
+              onclick="stepCropperZoom(15)"
+              title="Aumentar Zoom"
+              class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold flex items-center justify-center shrink-0 border border-slate-700">
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Ferramentas Rápidas: Girar, Espelhar, Centralizar -->
+        <div class="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800/80">
+          <button
+            type="button"
+            onclick="rotateCropper(90)"
+            class="px-2 py-2 rounded-xl bg-slate-800 hover:bg-cyan-500/20 text-slate-200 hover:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/80 transition">
+            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+            <span>Girar 90°</span>
+          </button>
+          
+          <button
+            type="button"
+            onclick="flipCropperH()"
+            class="px-2 py-2 rounded-xl bg-slate-800 hover:bg-cyan-500/20 text-slate-200 hover:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/80 transition">
+            <i data-lucide="flip-horizontal" class="w-3.5 h-3.5"></i>
+            <span>Espelhar</span>
+          </button>
+
+          <button
+            type="button"
+            onclick="resetCropperView()"
+            class="px-2 py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 text-slate-200 hover:text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700/80 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Centralizar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Botões de Ação do Rodapé -->
+      <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+        <button
+          type="button"
+          onclick="closeImageCropper()"
+          class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onclick="applyCropperImage()"
+          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 text-slate-950 text-xs font-extrabold shadow-lg glow-cyan flex items-center gap-2 hover:brightness-110 active:scale-95 transition">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Concluir & Aplicar Foto</span>
+        </button>
+      </div>
+
     </div>
   </div>
 
