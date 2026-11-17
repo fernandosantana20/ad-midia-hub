@@ -3800,7 +3800,7 @@ function getMonthlyCanteenSummary(targetMonth = null) {
         count: logs.length,
         dates: logs.map(l => l.date).sort().join(', '),
         totalValue: logs.length * defaultValNum,
-        signature: `${logs.length} PRESENÇAS CONFIRMADAS`
+        signature: ''
       });
     }
   });
@@ -3885,7 +3885,7 @@ function exportMonthlyCanteenPDF() {
                 <td class="col-name">${escapeHTML(r.name)}</td>
                 <td>${r.count} presença(s)</td>
                 <td>R$ ${r.totalValue.toFixed(2).replace('.', ',')}</td>
-                <td>CONFIRMADO</td>
+                <td></td>
               </tr>
             `).join('')}
           </tbody>
