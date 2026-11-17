@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v25-leitor-qr-corrigido';
+const CACHE_NAME = 'ad-midia-hub-cache-v26-reconhecimento-qr-nome';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

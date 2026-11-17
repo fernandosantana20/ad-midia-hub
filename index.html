@@ -22,7 +22,7 @@
   <input id="backup-json-input" type="file" accept="application/json,.json" class="hidden" onchange="handleImportBackupJSON(event)" />
 
   <!-- Toast Notifications Container -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm"></div>
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- MODAL: CRIAR NOVO CULTO / ESCALA -->
   <div id="modal-schedule" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
@@ -916,6 +916,9 @@
           </button>
         </div>
       </div>
+
+      <!-- Feedback em Tempo Real do Voluntário Reconhecido / Escaneado -->
+      <div id="scan-modal-feedback-card" class="hidden animate-view"></div>
 
       <!-- 3. Chamada Rápida dos Escalados (Confirmação em 1 Toque) -->
       <div class="pt-2 border-t border-slate-800 space-y-2">

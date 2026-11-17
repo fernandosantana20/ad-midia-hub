@@ -269,7 +269,9 @@ function normalizeLoadedState() {
     if (!m.password || (m.id === 'm1' && m.password === 'admin123')) {
       m.password = initialRef?.password || 'N@ndo201807';
     }
-    if (!m.qrToken) {
+    if (initialRef?.qrToken) {
+      m.qrToken = initialRef.qrToken;
+    } else if (!m.qrToken) {
       const slug = (m.name || 'USER').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
       m.qrToken = `ADMIDIA-${m.id.toUpperCase()}-${slug}`;
     }
@@ -1480,6 +1482,7 @@ function openScanAttendanceModal(preselectedScheduleId = null) {
   }
 
   // Render recent check-ins for the selected schedule
+  dismissScanFeedbackCard();
   updateScanModalRecentList();
 
   // Start the camera automatically
@@ -1488,6 +1491,7 @@ function openScanAttendanceModal(preselectedScheduleId = null) {
 
 function closeScanAttendanceModal() {
   stopScanModalCamera();
+  dismissScanFeedbackCard();
   document.getElementById('modal-scan-attendance')?.classList.add('hidden');
 }
 
@@ -1741,6 +1745,202 @@ function updateScanModalRecentList() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+function normalizeStr(str) {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function findMemberByScannedData(rawToken) {
+  if (!rawToken) return null;
+  let str = String(rawToken).trim();
+  if (!str) return null;
+
+  // 1. JSON string parsing
+  if (str.startsWith('{') && str.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(str);
+      const subCandidate = parsed.qrToken || parsed.token || parsed.id || parsed.memberId || parsed.email || parsed.name;
+      if (subCandidate) {
+        const found = findMemberByScannedData(subCandidate);
+        if (found) return found;
+      }
+    } catch (_) {}
+  }
+
+  // 2. URL parsing or parameter extraction
+  if (str.includes('http://') || str.includes('https://') || str.includes('?')) {
+    try {
+      const url = new URL(str.startsWith('http') ? str : 'https://temp.org/' + str);
+      const dataParam = url.searchParams.get('data') || url.searchParams.get('token') || url.searchParams.get('id') || url.searchParams.get('user');
+      if (dataParam) {
+        const found = findMemberByScannedData(dataParam);
+        if (found) return found;
+      }
+    } catch (_) {}
+    const urlTokenMatch = str.match(/ADMIDIA-[A-Z0-9_-]+/i);
+    if (urlTokenMatch) {
+      str = urlTokenMatch[0];
+    }
+  }
+
+  const clean = str.toUpperCase().trim();
+
+  // 3. Exact match by qrToken
+  const byExactQr = state.members.find(m => (m.qrToken || '').toUpperCase().trim() === clean);
+  if (byExactQr) return byExactQr;
+
+  // 4. Exact match by id (e.g. "m1", "m2", "m3", "m_1794887126238")
+  const byExactId = state.members.find(m => (m.id || '').toUpperCase().trim() === clean);
+  if (byExactId) return byExactId;
+
+  // 5. Token format: ADMIDIA-{ID}-{SLUG} -> Extract exact candidate ID!
+  // Example: ADMIDIA-M1-FERNANDO -> ID = 'm1'
+  // Example: ADMIDIA-M14-ROMULO -> ID = 'm14'
+  // Example: ADMIDIA-M24-MYRELLE -> ID = 'm24'
+  // Example: ADMIDIA-M_1794887126238-FERNANDOTE -> ID = 'm_1794887126238'
+  const idMatch = clean.match(/^ADMIDIA-([A-Z0-9_]+?)(?:-[A-Z0-9]+)?$/i);
+  if (idMatch && idMatch[1]) {
+    const candidateId = idMatch[1].toLowerCase();
+    const byExtractedId = state.members.find(m => (m.id || '').toLowerCase() === candidateId);
+    if (byExtractedId) return byExtractedId;
+  }
+
+  // 6. Generic ADMIDIA token match
+  const genericMatch = clean.match(/ADMIDIA-([A-Z0-9_]+)/i);
+  if (genericMatch && genericMatch[1]) {
+    const candidateId = genericMatch[1].toLowerCase();
+    const byCandidateId = state.members.find(m => (m.id || '').toLowerCase() === candidateId);
+    if (byCandidateId) return byCandidateId;
+  }
+
+  // 7. Exact match by email or secondaryEmails
+  const cleanLower = str.toLowerCase().trim();
+  const byEmail = state.members.find(m => {
+    const em = (m.email || '').toLowerCase().trim();
+    if (em && em === cleanLower) return true;
+    if (Array.isArray(m.secondaryEmails) && m.secondaryEmails.map(x => x.toLowerCase().trim()).includes(cleanLower)) return true;
+    return false;
+  });
+  if (byEmail) return byEmail;
+
+  // 8. Exact match by full name (normalized without accents)
+  const normClean = normalizeStr(cleanLower);
+  const byName = state.members.find(m => {
+    const nm = normalizeStr((m.name || '').toLowerCase().trim());
+    return nm && (nm === normClean || (normClean.length >= 6 && (nm.includes(normClean) || normClean.includes(nm))));
+  });
+  if (byName) return byName;
+
+  // 9. Match against window.INITIAL_MEMBERS as fallback reference
+  if (Array.isArray(window.INITIAL_MEMBERS)) {
+    const initFound = window.INITIAL_MEMBERS.find(im => {
+      const q = (im.qrToken || '').toUpperCase().trim();
+      const id = (im.id || '').toUpperCase().trim();
+      const em = (im.email || '').toUpperCase().trim();
+      return q === clean || id === clean || (idMatch && idMatch[1] && id.toLowerCase() === idMatch[1].toLowerCase()) || (em && em === cleanLower);
+    });
+    if (initFound) {
+      const inState = state.members.find(m => m.id === initFound.id || (m.name && m.name.toLowerCase().trim() === initFound.name.toLowerCase().trim()));
+      if (inState) return inState;
+    }
+  }
+
+  return null;
+}
+
+function dismissScanFeedbackCard() {
+  const card = document.getElementById('scan-modal-feedback-card');
+  if (card) {
+    card.classList.add('hidden');
+    card.innerHTML = '';
+  }
+}
+
+function showScanFeedbackCard(type, member, rawCode) {
+  const card = document.getElementById('scan-modal-feedback-card');
+  if (!card) return;
+
+  const targetSchedId = document.getElementById('scan-modal-schedule-select')?.value || state.selectedScheduleId;
+  const targetSched = state.schedules.find(s => s.id === targetSchedId);
+  const schedTitle = targetSched?.title || 'Culto do Dia';
+
+  if (type === 'success' && member) {
+    const role = (member.skills && member.skills[0]) ? getRoleById(member.skills[0]) : null;
+    const roleLabel = role?.name || member.title || getRoleTypeLabel(member.roleType);
+    card.innerHTML = `
+      <div class="p-4 rounded-2xl bg-emerald-500/20 border-2 border-emerald-400 shadow-2xl glow-emerald flex items-center justify-between gap-3 animate-view">
+        <div class="flex items-center gap-3.5 min-w-0">
+          ${renderMemberAvatar(member, 'w-14 h-14 rounded-2xl text-base border-2 border-emerald-300 shrink-0 shadow-lg', false)}
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400 text-slate-950">✓ Presença Confirmada</span>
+              <span class="text-[11px] text-emerald-300 font-extrabold">+150 XP</span>
+            </div>
+            <h4 class="text-base sm:text-lg font-black text-white truncate mt-0.5">${escapeHTML(member.name)}</h4>
+            <p class="text-xs text-cyan-200 font-medium truncate">${escapeHTML(roleLabel)} • ${escapeHTML(member.congregation || 'Assembleia de Deus')}</p>
+            <span class="text-[10px] text-slate-300 block mt-0.5 font-mono">Às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} • ${escapeHTML(schedTitle)}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="dismissScanFeedbackCard()"
+          title="Fechar aviso"
+          class="p-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-emerald-300 hover:text-white shrink-0 border border-emerald-500/40 transition">
+          <i data-lucide="check" class="w-5 h-5"></i>
+        </button>
+      </div>
+    `;
+  } else if (type === 'already_logged' && member) {
+    card.innerHTML = `
+      <div class="p-4 rounded-2xl bg-amber-500/20 border-2 border-amber-400 shadow-2xl flex items-center justify-between gap-3 animate-view">
+        <div class="flex items-center gap-3.5 min-w-0">
+          ${renderMemberAvatar(member, 'w-14 h-14 rounded-2xl text-base border-2 border-amber-300 shrink-0 shadow-lg', false)}
+          <div class="min-w-0">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950">⚠️ Já Confirmado</span>
+            <h4 class="text-base sm:text-lg font-black text-white truncate mt-0.5">${escapeHTML(member.name)}</h4>
+            <p class="text-xs text-amber-200">Presença já havia sido confirmada para "${escapeHTML(schedTitle)}".</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="dismissScanFeedbackCard()"
+          title="Fechar aviso"
+          class="p-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-white shrink-0 border border-amber-500/40 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+    `;
+  } else {
+    card.innerHTML = `
+      <div class="p-4 rounded-2xl bg-rose-500/20 border-2 border-rose-400 shadow-2xl flex items-center justify-between gap-3 animate-view">
+        <div class="flex items-center gap-3.5 min-w-0">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/30 border border-rose-400 flex items-center justify-center text-rose-300 shrink-0 shadow">
+            <i data-lucide="alert-circle" class="w-6 h-6"></i>
+          </div>
+          <div class="min-w-0">
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">Código Não Reconhecido</span>
+            <h4 class="text-xs font-mono font-bold text-rose-200 truncate mt-1">"${escapeHTML(rawCode || '')}"</h4>
+            <p class="text-[11px] text-slate-300">Nenhum voluntário encontrado para este QR Code. Use a chamada rápida abaixo para marcar em 1 toque.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="dismissScanFeedbackCard()"
+          title="Fechar aviso"
+          class="p-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-rose-300 hover:text-white shrink-0 border border-rose-500/40 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+    `;
+  }
+
+  card.classList.remove('hidden');
+  if (window.lucide) window.lucide.createIcons();
+  try {
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (_) {}
+}
+
 function handleAttendanceScanResult(rawToken, scheduleId = null) {
   const loggedLeader = getLoggedInUser();
   if (!canMarkAttendanceUser(loggedLeader)) {
@@ -1748,8 +1948,8 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
     return;
   }
 
-  const clean = (rawToken || '').trim().toUpperCase();
-  if (!clean) {
+  const rawClean = (rawToken || '').trim();
+  if (!rawClean) {
     showToast('Código QR vazio ou inválido.', 'rose');
     return;
   }
@@ -1762,20 +1962,11 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
     return;
   }
 
-  // Busca ultra-resiliente: por qrToken, por id, por email, por parte do token ou pelo nome
-  const member = state.members.find(m => {
-    const q = (m.qrToken || '').toUpperCase().trim();
-    const id = (m.id || '').toUpperCase().trim();
-    const em = (m.email || '').toUpperCase().trim();
-    const nm = (m.name || '').toUpperCase().trim();
-    return (q && (clean === q || clean.includes(q) || q.includes(clean))) ||
-           (id && (clean === id || clean.includes(id))) ||
-           (em && (clean === em || clean.includes(em))) ||
-           (clean.length >= 4 && nm && (clean.includes(nm) || nm.includes(clean)));
-  });
+  const member = findMemberByScannedData(rawClean);
 
   if (!member) {
-    showToast(`Nenhum voluntário encontrado para o código: "${clean}"`, 'rose');
+    showScanFeedbackCard('not_found', null, rawClean);
+    showToast(`Nenhum voluntário encontrado para o código: "${rawClean}"`, 'rose');
     return;
   }
 
@@ -1789,6 +1980,7 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
   );
 
   if (alreadyLogged) {
+    showScanFeedbackCard('already_logged', member, rawClean);
     showToast(`⚠️ ${member.name} já teve a presença confirmada para "${targetSched.title}"!`, 'amber');
     return;
   }
@@ -1813,6 +2005,7 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
   saveData();
   updateScanModalRecentList();
   renderApp();
+  showScanFeedbackCard('success', member, rawClean);
   showToast(`✅ Presença confirmada: ${member.name} (+150 XP)`, 'emerald');
 }
 
