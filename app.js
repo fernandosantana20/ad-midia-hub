@@ -1815,7 +1815,6 @@ function handleAttendanceScanResult(rawToken, scheduleId = null) {
   renderApp();
   showToast(`✅ Presença confirmada: ${member.name} (+150 XP)`, 'emerald');
 }
-}
 
 function markAttendanceByQrToken(rawToken, scheduleId = null) {
   handleAttendanceScanResult(rawToken, scheduleId);
