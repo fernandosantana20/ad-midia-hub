@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v30-mini-editor-foto-perfil';
+const CACHE_NAME = 'ad-midia-hub-cache-v31-novos-voluntarios-cadastrados';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

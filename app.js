@@ -314,6 +314,11 @@ function normalizeLoadedState() {
   if (!state.selectedScheduleId && state.schedules.length > 0) {
     state.selectedScheduleId = state.schedules[0].id;
   }
+
+  if (addedNewInitialMembers) {
+    saveLocalCacheOnly();
+    pushToCloud();
+  }
 }
 
 function loadData() {
