@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v22-dados-reais-integrados';
+const CACHE_NAME = 'ad-midia-hub-cache-v23-frequencia-fix';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

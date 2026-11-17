@@ -4218,7 +4218,7 @@ function renderHeader() {
       : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Modo Offline Local</span>`;
 
   return `
-    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#050811]/85 backdrop-blur-xl">
+    <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#050811] shadow-2xl">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         
         <!-- Brand Identity -->
