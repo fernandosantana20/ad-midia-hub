@@ -83,12 +83,25 @@ function getLoggedInUser() {
   ) || null;
 }
 
-function isPrivilegedUser(member = getLoggedInUser()) {
+function getEffectiveUser() {
+  const logged = getLoggedInUser();
+  const active = state.activeMemberId ? getMemberById(state.activeMemberId) : null;
+  // Se o usuário logado for Desenvolvedor ou Diretor, permite simular as permissões do voluntário ativo no modo equipe
+  if (logged && (logged.roleType === 'developer' || logged.roleType === 'director')) {
+    if (state.mode === 'team' && active) {
+      return active;
+    }
+    return logged;
+  }
+  return logged || active;
+}
+
+function isPrivilegedUser(member = getEffectiveUser()) {
   if (!member) return false;
   return member.roleType === 'developer' || member.roleType === 'director' || member.roleType === 'leader';
 }
 
-function canMarkAttendanceUser(member = getLoggedInUser()) {
+function canMarkAttendanceUser(member = getEffectiveUser()) {
   if (!member) {
     return state.mode === 'director';
   }
@@ -99,9 +112,9 @@ function canMarkAttendanceUser(member = getLoggedInUser()) {
 }
 
 function toggleMemberAttendancePermission(memberId) {
-  const logged = getLoggedInUser();
-  if (!logged || (logged.roleType !== 'developer' && logged.roleType !== 'director')) {
-    showToast('Apenas o Desenvolvedor (Fernando) ou o Diretor Geral (Lucas Henrique) podem autorizar quem marca frequência.', 'rose');
+  const logged = getEffectiveUser();
+  if (!logged || (logged.roleType !== 'developer' && logged.roleType !== 'director' && logged.roleType !== 'leader')) {
+    showToast('Apenas a liderança da mídia pode autorizar quem marca frequência.', 'rose');
     return;
   }
   const member = getMemberById(memberId);
@@ -111,7 +124,7 @@ function toggleMemberAttendancePermission(memberId) {
   renderApp();
   showToast(
     member.canMarkAttendance
-      ? `✅ ${member.name} agora tem permissão do Diretor para marcar frequência no QR Code!`
+      ? `✅ ${member.name} agora tem permissão para marcar frequência no QR Code!`
       : `🔒 Permissão de marcar frequência removida de ${member.name}.`,
     member.canMarkAttendance ? 'emerald' : 'amber'
   );
@@ -297,8 +310,14 @@ function normalizeLoadedState() {
     if (!Array.isArray(m.blockedDates)) {
       m.blockedDates = [];
     }
-    if (typeof m.canMarkAttendance !== 'boolean') {
-      m.canMarkAttendance = m.roleType === 'developer' || m.roleType === 'director';
+    if (m.id === 'm22' && (!m.roleType || m.roleType === 'member')) {
+      m.roleType = 'leader';
+      m.canMarkAttendance = true;
+    }
+    if (m.roleType === 'developer' || m.roleType === 'director' || m.roleType === 'leader') {
+      m.canMarkAttendance = true;
+    } else if (typeof m.canMarkAttendance !== 'boolean') {
+      m.canMarkAttendance = false;
     }
   });
 
@@ -1855,9 +1874,9 @@ let lastScannedToken = null;
 let lastScannedTime = 0;
 
 function openScanAttendanceModal(preselectedScheduleId = null) {
-  const logged = getLoggedInUser();
+  const logged = getEffectiveUser();
   if (!canMarkAttendanceUser(logged)) {
-    showToast('Apenas o Diretor Lucas Henrique, Desenvolvedor Fernando ou marcadores autorizados podem registrar presença.', 'rose');
+    showToast('Apenas o Diretor Lucas Henrique, Desenvolvedor Fernando ou líderes autorizados podem registrar presença.', 'rose');
     return;
   }
 
@@ -2343,7 +2362,7 @@ function showScanFeedbackCard(type, member, rawCode) {
 }
 
 function handleAttendanceScanResult(rawToken, scheduleId = null) {
-  const loggedLeader = getLoggedInUser();
+  const loggedLeader = getEffectiveUser();
   if (!canMarkAttendanceUser(loggedLeader)) {
     showToast('Apenas o Diretor Lucas Henrique, Desenvolvedor Fernando ou voluntários autorizados pela liderança podem registrar presença.', 'rose');
     return;
@@ -2416,7 +2435,7 @@ function markAttendanceByQrToken(rawToken, scheduleId = null) {
 
 function handleManualQrSubmit(e) {
   e.preventDefault();
-  const loggedLeader = getLoggedInUser();
+  const loggedLeader = getEffectiveUser();
   if (!canMarkAttendanceUser(loggedLeader)) {
     showToast('Apenas usuários autorizados podem registrar presença.', 'rose');
     return;
@@ -2428,7 +2447,7 @@ function handleManualQrSubmit(e) {
 }
 
 function startCameraQrScanner() {
-  const loggedLeader = getLoggedInUser();
+  const loggedLeader = getEffectiveUser();
   if (!canMarkAttendanceUser(loggedLeader)) {
     showToast('Apenas o Diretor Lucas Henrique, Desenvolvedor Fernando ou voluntários autorizados pela liderança podem abrir o scanner.', 'rose');
     return;
@@ -4259,8 +4278,8 @@ function setMode(newMode) {
 }
 
 function setActiveTab(tab) {
-  const logged = getLoggedInUser();
-  if (!isPrivilegedUser(logged) && (tab === 'members' || tab === 'reports')) {
+  const effective = getEffectiveUser();
+  if (!isPrivilegedUser(effective) && (tab === 'members' || tab === 'reports')) {
     showToast('Privacidade ativa: apenas a liderança pode visualizar esta área.', 'rose');
     return;
   }
@@ -4751,11 +4770,12 @@ function openMemberModal(memberId = null) {
     starSelect.value = typeof member?.starRating === 'number' ? String(member.starRating) : '0';
     starSelect.disabled = !canManage;
   }
+  const isAutoPrivileged = member?.roleType === 'developer' || member?.roleType === 'director' || member?.roleType === 'leader';
   const canGrantAtt = logged?.roleType === 'developer' || logged?.roleType === 'director';
   const attCheckbox = document.getElementById('member-canmarkattendance');
   if (attCheckbox) {
-    attCheckbox.checked = Boolean(member?.canMarkAttendance || member?.roleType === 'developer' || member?.roleType === 'director');
-    attCheckbox.disabled = !canGrantAtt || member?.roleType === 'developer' || member?.roleType === 'director';
+    attCheckbox.checked = Boolean(member?.canMarkAttendance || isAutoPrivileged);
+    attCheckbox.disabled = !canGrantAtt || isAutoPrivileged;
   }
   document.getElementById('member-photo-data').value = member?.photoUrl || '';
   updateModalPhotoPreview(member?.photoUrl || '', member?.name || 'AD');
@@ -4924,8 +4944,8 @@ function handleSaveMember(e) {
           existing.validatedBy = logged?.name || 'Direção';
         }
       }
-      if (canGrantAtt) {
-        existing.canMarkAttendance = existing.roleType === 'developer' || existing.roleType === 'director' || canMarkInput;
+      if (canGrantAtt || roleType === 'leader') {
+        existing.canMarkAttendance = existing.roleType === 'developer' || existing.roleType === 'director' || existing.roleType === 'leader' || canMarkInput;
       }
       existing.skills = skills;
       existing.photoUrl = photoUrl;
@@ -4939,7 +4959,7 @@ function handleSaveMember(e) {
       email: normalizedEmail,
       password: passwordInput,
       roleType: finalRoleType,
-      canMarkAttendance: finalRoleType === 'developer' || finalRoleType === 'director' || (canGrantAtt && canMarkInput),
+      canMarkAttendance: finalRoleType === 'developer' || finalRoleType === 'director' || finalRoleType === 'leader' || (canGrantAtt && canMarkInput),
       title: title || 'Voluntário AD Mídia',
       phone: phone || '',
       skills,
@@ -5061,10 +5081,12 @@ function copyAllMembersAccessForGroup() {
 
 function renderHeader() {
   const loggedUser = getLoggedInUser();
-  const canManage = isPrivilegedUser(loggedUser);
-  const canMark = canMarkAttendanceUser(loggedUser);
-  const isDirector = canManage && state.mode === 'director';
-  const activeMember = canManage ? (getMemberById(state.activeMemberId) || loggedUser || state.members[0]) : loggedUser;
+  const activeMember = getMemberById(state.activeMemberId) || loggedUser || state.members[0];
+  const effectiveUser = getEffectiveUser();
+
+  const canManage = isPrivilegedUser(effectiveUser);
+  const canMark = canMarkAttendanceUser(effectiveUser);
+  const isDirector = canManage && (state.mode === 'director' || effectiveUser?.roleType === 'leader');
 
   // Calculate global stats
   const totalMembers = state.members.length;
@@ -6608,8 +6630,8 @@ function renderMyAreaTab() {
 // ============================================================================
 
 function renderMembersTab() {
-  const loggedUser = getLoggedInUser();
-  const canManage = isPrivilegedUser(loggedUser);
+  const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(effectiveUser);
   if (!canManage) {
     return renderMyAreaTab();
   }
@@ -7090,9 +7112,10 @@ function renderRankingTab() {
 
 function renderAttendanceTab() {
   const loggedUser = getLoggedInUser();
-  const canManage = isPrivilegedUser(loggedUser);
-  const canMark = canMarkAttendanceUser(loggedUser);
-  const myMember = loggedUser || state.members[0];
+  const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(effectiveUser);
+  const canMark = canMarkAttendanceUser(effectiveUser);
+  const myMember = effectiveUser || loggedUser || state.members[0];
 
   // Collect all attendance logs across members
   const allLogs = [];
@@ -7516,8 +7539,8 @@ function renderGmailLoginScreen() {
 // ============================================================================
 
 function renderReportsAndCanteenTab() {
-  const loggedUser = getLoggedInUser();
-  const canManage = isPrivilegedUser(loggedUser);
+  const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(effectiveUser);
   if (!canManage) {
     return renderMyAreaTab();
   }
@@ -7598,8 +7621,8 @@ function renderApp() {
     mainContent = renderRankingTab();
   }
 
-  const loggedUser = getLoggedInUser();
-  const canMark = canMarkAttendanceUser(loggedUser);
+  const effectiveUser = getEffectiveUser();
+  const canMark = canMarkAttendanceUser(effectiveUser);
 
   root.innerHTML = `
     ${renderHeader()}

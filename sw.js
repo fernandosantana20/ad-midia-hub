@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v31-novos-voluntarios-cadastrados';
+const CACHE_NAME = 'ad-midia-hub-cache-v32-lider-permissao-frequencia-relatorio';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
