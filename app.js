@@ -4367,8 +4367,10 @@ function setMode(newMode) {
 }
 
 function setActiveTab(tab) {
+  const logged = getLoggedInUser();
   const effective = getEffectiveUser();
-  if (!isPrivilegedUser(effective) && (tab === 'members' || tab === 'reports')) {
+  const canAccess = isPrivilegedUser(logged) || isPrivilegedUser(effective);
+  if (!canAccess && (tab === 'members' || tab === 'reports')) {
     showToast('Privacidade ativa: apenas a liderança pode visualizar esta área.', 'rose');
     return;
   }
@@ -5691,10 +5693,11 @@ function copyAllMembersAccessForGroup() {
 
 function renderHeader() {
   const loggedUser = getLoggedInUser();
+  const logged = loggedUser;
   const activeMember = getMemberById(state.activeMemberId) || loggedUser || state.members[0];
   const effectiveUser = getEffectiveUser();
 
-  const canManage = isPrivilegedUser(effectiveUser);
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   const canMark = canMarkAttendanceUser(effectiveUser);
   const isDirector = canManage && (state.mode === 'director' || effectiveUser?.roleType === 'leader');
 
@@ -6428,9 +6431,10 @@ function renderBirthdayWidget() {
 // ============================================================================
 
 function renderSchedulesTab() {
-  const logged = getLoggedInUser();
+  const loggedUser = getLoggedInUser();
+  const logged = loggedUser;
   const effectiveUser = getEffectiveUser();
-  const canManage = isPrivilegedUser(effectiveUser);
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   const canMark = canMarkAttendanceUser(effectiveUser);
   const isDirector = state.mode === 'director' || canManage;
   const selected = state.schedules.find(s => s.id === state.selectedScheduleId) || state.schedules[0];
@@ -7319,12 +7323,14 @@ function renderMyAreaTab() {
 // ============================================================================
 
 function renderMembersTab() {
+  const loggedUser = getLoggedInUser();
+  const logged = loggedUser;
   const effectiveUser = getEffectiveUser();
-  const canManage = isPrivilegedUser(effectiveUser);
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   if (!canManage) {
     return renderMyAreaTab();
   }
-  const isDirector = state.mode === 'director' || canManage;
+  const isDirector = (state.mode === 'director' && isPrivilegedUser(loggedUser)) || canManage;
 
   const filteredMembers = state.members.filter(m => {
     const matchesSearch =
@@ -7801,8 +7807,9 @@ function renderRankingTab() {
 
 function renderAttendanceTab() {
   const loggedUser = getLoggedInUser();
+  const logged = loggedUser;
   const effectiveUser = getEffectiveUser();
-  const canManage = isPrivilegedUser(effectiveUser);
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   const canMark = canMarkAttendanceUser(effectiveUser);
   const myMember = effectiveUser || loggedUser || state.members[0];
 
@@ -8228,8 +8235,10 @@ function renderGmailLoginScreen() {
 // ============================================================================
 
 function renderReportsAndCanteenTab() {
+  const loggedUser = getLoggedInUser();
+  const logged = loggedUser;
   const effectiveUser = getEffectiveUser();
-  const canManage = isPrivilegedUser(effectiveUser);
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   if (!canManage) {
     return renderMyAreaTab();
   }
