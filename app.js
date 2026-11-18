@@ -44,6 +44,8 @@ const state = {
   selectedScheduleId: null,
   memberSearch: '',
   roleFilter: 'all',
+  scheduleVolunteerSearch: '',
+  attendanceVolunteerSearch: '',
   cloudSyncStatus: 'syncing', // 'synced' | 'syncing' | 'local'
   roles: [],
   members: [],
@@ -181,20 +183,18 @@ function enforcePrivacyState() {
 }
 
 // ============================================================================
-// INICIALIZAÇÃO, SINCRONIZAÇÃO EM NUVEM (NETLIFY BLOBS) & PERSISTÊNCIA
+// INICIALIZAÇÃO, SINCRONIZAÇÃO EM NUVEM SIMULTÂNEA & PERSISTÊNCIA
 // ============================================================================
 
-const PRIMARY_CLOUD_API = window.location.origin.includes('ad-midia-hub-escala.netlify.app')
-  ? '/api/state'
-  : 'https://ad-midia-hub-escala.netlify.app/api/state';
-const CLOUD_RELAY_URL = 'https://kvdb.io/A9xK3mP7vQ2wZ8nL4rJ6tY/ad_midia_hub_global_v3_27members';
+const PRIMARY_CLOUD_API = '/api/state';
+const FALLBACK_CLOUD_API = 'https://ad-midia-hub-escala-desativado.netlify.app/api/state';
 
 async function syncFromCloud(silent = false) {
   try {
     state.cloudSyncStatus = 'syncing';
     let cloudData = null;
 
-    // 1. Try Primary Cloud Database (Netlify Edge Blobs API)
+    // 1. Tentar Endpoint Primário da Nuvem (/api/state na Vercel ou Netlify)
     try {
       const res = await fetch(PRIMARY_CLOUD_API, { cache: 'no-store' });
       if (res.ok) {
@@ -205,15 +205,17 @@ async function syncFromCloud(silent = false) {
       }
     } catch (_) {}
 
-    // 2. Fallback to Cloud Relay if Primary wasn't hit
+    // 2. Fallback direto ao Netlify Blobs Database se o proxy /api/state não responder
     if (!cloudData) {
-      const relayRes = await fetch(CLOUD_RELAY_URL, { cache: 'no-store' });
-      if (relayRes.ok) {
-        const relayJson = await relayRes.json();
-        if (relayJson && Array.isArray(relayJson.members)) {
-          cloudData = relayJson;
+      try {
+        const fallbackRes = await fetch(FALLBACK_CLOUD_API, { cache: 'no-store' });
+        if (fallbackRes.ok) {
+          const fallbackJson = await fallbackRes.json();
+          if (fallbackJson && fallbackJson.ok && fallbackJson.data) {
+            cloudData = fallbackJson.data;
+          }
         }
-      }
+      } catch (_) {}
     }
 
     if (cloudData) {
@@ -248,25 +250,107 @@ async function pushToCloud() {
   const bodyStr = JSON.stringify(payloadObj);
 
   let synced = false;
+
+  // 1. Gravar no endpoint primário (/api/state)
   try {
     const res = await fetch(PRIMARY_CLOUD_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: bodyStr
     });
-    if (res.ok) synced = true;
+    if (res.ok) {
+      const json = await res.json().catch(() => null);
+      if (json && json.ok) synced = true;
+    }
   } catch (_) {}
 
-  try {
-    const relayRes = await fetch(CLOUD_RELAY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: bodyStr
-    });
-    if (relayRes.ok) synced = true;
-  } catch (_) {}
+  // 2. Fallback direto ao Netlify Blobs se primário falhar
+  if (!synced) {
+    try {
+      const fallbackRes = await fetch(FALLBACK_CLOUD_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: bodyStr
+      });
+      if (fallbackRes.ok) {
+        const json = await fallbackRes.json().catch(() => null);
+        if (json && json.ok) synced = true;
+      }
+    } catch (_) {}
+  }
 
   state.cloudSyncStatus = synced ? 'synced' : 'local';
+  renderApp();
+}
+
+// Sincronização periódica em segundo plano (a cada 20 segundos) e ao focar a tela
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        syncFromCloud(true);
+      }
+    });
+  }
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('focus', () => {
+      syncFromCloud(true);
+    });
+  }
+  setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      syncFromCloud(true);
+    }
+  }, 20000);
+}
+
+// ============================================================================
+// FUNÇÕES DE PESQUISA DE VOLUNTÁRIOS (MEMBROS, ESCALA E FREQUÊNCIA)
+// ============================================================================
+
+function executeMemberSearch() {
+  const input = document.getElementById('member-search-input');
+  if (input) {
+    state.memberSearch = (input.value || '').trim();
+  }
+  renderApp();
+}
+
+function clearMemberSearch() {
+  state.memberSearch = '';
+  const input = document.getElementById('member-search-input');
+  if (input) input.value = '';
+  renderApp();
+}
+
+function executeScheduleVolunteerSearch() {
+  const input = document.getElementById('schedule-volunteer-search-input');
+  if (input) {
+    state.scheduleVolunteerSearch = (input.value || '').trim();
+  }
+  renderApp();
+}
+
+function clearScheduleVolunteerSearch() {
+  state.scheduleVolunteerSearch = '';
+  const input = document.getElementById('schedule-volunteer-search-input');
+  if (input) input.value = '';
+  renderApp();
+}
+
+function executeAttendanceVolunteerSearch() {
+  const input = document.getElementById('attendance-volunteer-search-input');
+  if (input) {
+    state.attendanceVolunteerSearch = (input.value || '').trim();
+  }
+  renderApp();
+}
+
+function clearAttendanceVolunteerSearch() {
+  state.attendanceVolunteerSearch = '';
+  const input = document.getElementById('attendance-volunteer-search-input');
+  if (input) input.value = '';
+  renderApp();
 }
 
 function normalizeLoadedState() {
@@ -5708,10 +5792,10 @@ function renderHeader() {
 
   const cloudBadge =
     state.cloudSyncStatus === 'synced'
-      ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Nuvem Sincronizada</span>`
+      ? `<button type="button" onclick="syncFromCloud()" title="Nuvem conectada e sincronizada. Clique para sincronizar agora" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition cursor-pointer active:scale-95"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Nuvem Sincronizada 🔄</button>`
       : state.cloudSyncStatus === 'syncing'
-      ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 animate-pulse">Sincronizando...</span>`
-      : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Modo Offline Local</span>`;
+      ? `<span class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 animate-pulse">Sincronizando Nuvem...</span>`
+      : `<button type="button" onclick="syncFromCloud()" title="Clique para sincronizar com a nuvem agora" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition cursor-pointer active:scale-95">Sincronizar Nuvem 🔄</button>`;
 
   return `
     <header class="sticky top-0 z-30 border-b backdrop-blur-md shadow-md">
@@ -6757,10 +6841,83 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
         </div>
       ` : ''}
 
+      <!-- Barra de Pesquisa de Voluntário na Escala -->
+      <div class="glass-panel rounded-2xl p-3.5 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input
+              id="schedule-volunteer-search-input"
+              type="text"
+              placeholder="Pesquisar voluntário na escala (Ex: Wesley, Lucas, Fernando)..."
+              value="${escapeHTML(state.scheduleVolunteerSearch || '')}"
+              onkeydown="if(event.key === 'Enter') executeScheduleVolunteerSearch();"
+              class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <button
+            type="button"
+            onclick="executeScheduleVolunteerSearch()"
+            class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md glow-amber transition shrink-0"
+            title="Pesquisar Voluntário nesta Escala">
+            <i data-lucide="search" class="w-3.5 h-3.5"></i>
+            <span>Pesquisar</span>
+          </button>
+          ${state.scheduleVolunteerSearch ? `
+            <button
+              type="button"
+              onclick="clearScheduleVolunteerSearch()"
+              class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold shrink-0"
+              title="Limpar pesquisa na escala">
+              ✕ Limpar
+            </button>
+          ` : ''}
+        </div>
+        ${state.scheduleVolunteerSearch ? `
+          <div class="text-xs text-amber-300 font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>Mostrando postos de: "<strong>${escapeHTML(state.scheduleVolunteerSearch)}</strong>"</span>
+          </div>
+        ` : ''}
+      </div>
+
       <!-- Role Assignments Grouped by Department -->
       <div class="space-y-6">
-        ${categories.map(category => {
-          const roles = state.roles.filter(r => r.category === category);
+        ${(() => {
+          const schedVolunteerQuery = (state.scheduleVolunteerSearch || '').toLowerCase().trim();
+          if (schedVolunteerQuery) {
+            const hasAnyMatch = sched.assignments.some(a => {
+              const m = getMemberById(a.memberId);
+              return m && (
+                (m.name || '').toLowerCase().includes(schedVolunteerQuery) ||
+                (m.nickname || '').toLowerCase().includes(schedVolunteerQuery)
+              );
+            });
+            if (!hasAnyMatch) {
+              return `
+                <div class="glass-panel rounded-3xl p-6 border border-slate-800 text-center space-y-2">
+                  <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
+                    <i data-lucide="user-x" class="w-5 h-5"></i>
+                  </div>
+                  <h4 class="text-sm font-bold text-white">Nenhuma função atribuída</h4>
+                  <p class="text-xs text-slate-400">O voluntário "${escapeHTML(state.scheduleVolunteerSearch)}" não está escalado em nenhuma função nesta data.</p>
+                  <button type="button" onclick="clearScheduleVolunteerSearch()" class="px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Exibir todas as funções</button>
+                </div>
+              `;
+            }
+          }
+          return categories.map(category => {
+          let roles = state.roles.filter(r => r.category === category);
+          if (schedVolunteerQuery) {
+            roles = roles.filter(role => {
+              const assign = sched.assignments.find(a => a.roleId === role.id);
+              const assignedMember = assign ? getMemberById(assign.memberId) : null;
+              return assignedMember && (
+                (assignedMember.name || '').toLowerCase().includes(schedVolunteerQuery) ||
+                (assignedMember.nickname || '').toLowerCase().includes(schedVolunteerQuery)
+              );
+            });
+            if (roles.length === 0) return '';
+          }
           return `
             <div class="space-y-3">
               <div class="flex items-center gap-2">
@@ -6773,6 +6930,10 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                   const assign = sched.assignments.find(a => a.roleId === role.id);
                   const assignedMember = assign ? getMemberById(assign.memberId) : null;
                   const isCurrentUser = assignedMember && assignedMember.id === state.activeMemberId;
+                  const isSearchedVolunteer = schedVolunteerQuery && assignedMember && (
+                    (assignedMember.name || '').toLowerCase().includes(schedVolunteerQuery) ||
+                    (assignedMember.nickname || '').toLowerCase().includes(schedVolunteerQuery)
+                  );
 
                   // Sort members so specialists in this role appear first in the dropdown
                   const skilledMembers = state.members.filter(m => m.skills.includes(role.id));
@@ -6788,7 +6949,9 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
 
                   return `
                     <div class="p-3.5 rounded-2xl border transition ${
-                      isCurrentUser
+                      isSearchedVolunteer
+                        ? 'bg-amber-950/30 border-amber-500/60 ring-1 ring-amber-400/40'
+                        : isCurrentUser
                         ? 'bg-cyan-950/35 border-cyan-400/50 ring-1 ring-cyan-400/30'
                         : 'bg-slate-900/65 border-slate-800/80 hover:border-slate-700'
                     }">
@@ -6800,6 +6963,7 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                           <div>
                             <div class="flex items-center gap-1.5">
                               <h4 class="text-xs font-bold text-white">${role.shortName}</h4>
+                              ${isSearchedVolunteer ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-400 text-slate-950">LOCALIZADO</span>` : ''}
                               ${isCurrentUser ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-cyan-400 text-slate-950">VOCÊ</span>` : ''}
                             </div>
                             <p class="text-[11px] text-slate-400">${role.station}</p>
@@ -6922,7 +7086,8 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
               </div>
             </div>
           `;
-        }).join('')}
+        }).join('');
+      })()}
       </div>
     </div>
   `;
@@ -7332,11 +7497,15 @@ function renderMembersTab() {
   }
   const isDirector = (state.mode === 'director' && isPrivilegedUser(loggedUser)) || canManage;
 
+  const memQuery = (state.memberSearch || '').toLowerCase().trim();
   const filteredMembers = state.members.filter(m => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(state.memberSearch.toLowerCase()) ||
-      m.title.toLowerCase().includes(state.memberSearch.toLowerCase());
-    const matchesRole = state.roleFilter === 'all' || m.skills.includes(state.roleFilter);
+    const matchesSearch = !memQuery ||
+      (m.name || '').toLowerCase().includes(memQuery) ||
+      (m.nickname || '').toLowerCase().includes(memQuery) ||
+      (m.title || '').toLowerCase().includes(memQuery) ||
+      (m.congregation || '').toLowerCase().includes(memQuery) ||
+      (m.email || '').toLowerCase().includes(memQuery);
+    const matchesRole = state.roleFilter === 'all' || (m.skills || []).includes(state.roleFilter);
     return matchesSearch && matchesRole;
   });
 
@@ -7358,14 +7527,35 @@ function renderMembersTab() {
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
-          <div class="relative">
-            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-            <input
-              type="text"
-              placeholder="Buscar voluntário..."
-              value="${state.memberSearch}"
-              oninput="state.memberSearch = this.value; renderApp();"
-              class="bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 w-48 sm:w-56">
+          <!-- Campo e Botão de Pesquisa de Voluntário -->
+          <div class="flex items-center gap-1.5">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+              <input
+                id="member-search-input"
+                type="text"
+                placeholder="Buscar por nome, cargo ou congregação..."
+                value="${escapeHTML(state.memberSearch || '')}"
+                onkeydown="if(event.key === 'Enter') executeMemberSearch();"
+                class="bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 w-48 sm:w-64">
+            </div>
+            <button
+              type="button"
+              onclick="executeMemberSearch()"
+              class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md glow-amber transition shrink-0"
+              title="Pesquisar Voluntário por Nome">
+              <i data-lucide="search" class="w-3.5 h-3.5"></i>
+              <span>Pesquisar</span>
+            </button>
+            ${state.memberSearch ? `
+              <button
+                type="button"
+                onclick="clearMemberSearch()"
+                class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold shrink-0"
+                title="Limpar pesquisa de voluntário">
+                ✕ Limpar
+              </button>
+            ` : ''}
           </div>
 
           <select
@@ -7382,7 +7572,7 @@ function renderMembersTab() {
             title="Copiar lista com link, login e senha de todos os voluntários para o grupo do WhatsApp"
             class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs transition">
             <i data-lucide="share-2" class="w-4 h-4"></i>
-            <span>Copiar Acessos p/ Grupo WhatsApp</span>
+            <span>Copiar Acessos p/ WhatsApp</span>
           </button>
 
           <button
@@ -7393,6 +7583,24 @@ function renderMembersTab() {
           </button>
         </div>
       </div>
+
+      ${state.memberSearch ? `
+        <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-200">
+          <span>🔍 Resultado da pesquisa por "<strong>${escapeHTML(state.memberSearch)}</strong>": <strong>${filteredMembers.length}</strong> voluntário(s) encontrado(s).</span>
+          <button onclick="clearMemberSearch()" class="text-amber-400 hover:underline font-bold text-xs">Exibir todos (${state.members.length})</button>
+        </div>
+      ` : ''}
+
+      ${filteredMembers.length === 0 ? `
+        <div class="glass-panel rounded-3xl p-8 border border-slate-800 text-center space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
+            <i data-lucide="user-x" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Nenhum voluntário encontrado</h3>
+          <p class="text-xs text-slate-400">Nenhum voluntário correspondente ao termo "${escapeHTML(state.memberSearch)}" foi localizado.</p>
+          <button onclick="clearMemberSearch()" class="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs">Limpar Pesquisa</button>
+        </div>
+      ` : ''}
 
       <!-- Members Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -7824,6 +8032,24 @@ function renderAttendanceTab() {
 
   const visibleLogs = (canMark || canManage) ? allLogs : allLogs.filter(item => item.member.id === myMember?.id);
 
+  const attQuery = (state.attendanceVolunteerSearch || '').toLowerCase().trim();
+  const displayedAttendanceMembers = attQuery
+    ? state.members.filter(m =>
+        (m.name || '').toLowerCase().includes(attQuery) ||
+        (m.nickname || '').toLowerCase().includes(attQuery) ||
+        (m.qrToken || '').toLowerCase().includes(attQuery) ||
+        (m.title || '').toLowerCase().includes(attQuery)
+      )
+    : state.members;
+
+  const displayedHistoryLogs = attQuery
+    ? visibleLogs.filter(item =>
+        (item.member?.name || '').toLowerCase().includes(attQuery) ||
+        (item.member?.nickname || '').toLowerCase().includes(attQuery) ||
+        (item.log?.eventTitle || '').toLowerCase().includes(attQuery)
+      )
+    : visibleLogs;
+
   return `
     <div class="space-y-6 animate-view">
       <!-- Top Banner -->
@@ -7969,11 +8195,55 @@ function renderAttendanceTab() {
 
               <!-- Quick 1-Click QR Check-in & Evaluation List for All Members -->
               <div class="pt-3 border-t border-slate-800/80 space-y-2.5">
-                <span class="text-[10px] uppercase tracking-wider font-bold text-cyan-300 block">
-                  Cartões QR dos Voluntários Cadastrados (${state.members.length}):
-                </span>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] uppercase tracking-wider font-bold text-cyan-300 block">
+                    Cartões QR dos Voluntários Cadastrados (${displayedAttendanceMembers.length}${attQuery ? ` de ${state.members.length}` : ''}):
+                  </span>
+                </div>
+
+                <!-- Campo e Botão de Pesquisa de Voluntário na Frequência -->
+                <div class="flex items-center gap-2">
+                  <div class="relative flex-1">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input
+                      id="attendance-volunteer-search-input"
+                      type="text"
+                      placeholder="Pesquisar voluntário na frequência (Ex: Wesley, Lucas)..."
+                      value="${escapeHTML(state.attendanceVolunteerSearch || '')}"
+                      onkeydown="if(event.key === 'Enter') executeAttendanceVolunteerSearch();"
+                      class="w-full bg-slate-900/90 border border-slate-700 focus:border-emerald-400 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none">
+                  </div>
+                  <button
+                    type="button"
+                    onclick="executeAttendanceVolunteerSearch()"
+                    class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md glow-emerald transition shrink-0"
+                    title="Pesquisar Voluntário na Frequência">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                    <span>Pesquisar</span>
+                  </button>
+                  ${state.attendanceVolunteerSearch ? `
+                    <button
+                      type="button"
+                      onclick="clearAttendanceVolunteerSearch()"
+                      class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold shrink-0"
+                      title="Limpar pesquisa na frequência">
+                      ✕ Limpar
+                    </button>
+                  ` : ''}
+                </div>
+
+                ${state.attendanceVolunteerSearch ? `
+                  <div class="text-[11px] text-emerald-300 font-semibold">
+                    Filtrando por: "<strong>${escapeHTML(state.attendanceVolunteerSearch)}</strong>" (${displayedAttendanceMembers.length} voluntários)
+                  </div>
+                ` : ''}
+
                 <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  ${state.members.map(m => {
+                  ${displayedAttendanceMembers.length === 0 ? `
+                    <p class="text-xs text-slate-500 italic py-4 text-center">
+                      Nenhum voluntário encontrado para "${escapeHTML(state.attendanceVolunteerSearch)}".
+                    </p>
+                  ` : displayedAttendanceMembers.map(m => {
                     const logsCount = Array.isArray(m.attendanceLogs) ? m.attendanceLogs.length : 0;
                     return `
                       <div class="p-3 rounded-2xl bg-slate-900/75 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
@@ -8027,16 +8297,16 @@ function renderAttendanceTab() {
           <div class="glass-panel rounded-3xl p-6 border border-slate-800/90 space-y-3">
             <h3 class="text-sm font-display font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
-              <span>Histórico de Frequências Registradas via QR Code (${visibleLogs.length})</span>
+              <span>Histórico de Frequências Registradas via QR Code (${displayedHistoryLogs.length})</span>
             </h3>
 
-            ${visibleLogs.length === 0 ? `
+            ${displayedHistoryLogs.length === 0 ? `
               <p class="text-xs text-slate-500 italic py-4 text-center">
-                Nenhuma frequência registrada via QR Code ainda.
+                ${attQuery ? `Nenhum registro de frequência encontrado para "${escapeHTML(state.attendanceVolunteerSearch)}".` : 'Nenhuma frequência registrada via QR Code ainda.'}
               </p>
             ` : `
               <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
-                ${visibleLogs.map(({ member, log }) => `
+                ${displayedHistoryLogs.map(({ member, log }) => `
                   <div class="p-3 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between gap-2 text-xs">
                     <div class="flex items-center gap-2.5">
                       ${renderMemberAvatar(member, 'w-8 h-8 rounded-lg text-[10px]', false)}

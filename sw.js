@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v38-correcao-aba-voluntarios-auditoria-botoes';
+const CACHE_NAME = 'ad-midia-hub-cache-v39-sincronizacao-nuvem-simultanea-pesquisa-voluntarios';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
