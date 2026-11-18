@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v39-sincronizacao-nuvem-simultanea-pesquisa-voluntarios';
+const CACHE_NAME = 'ad-midia-hub-cache-v40-atualizacao-url-oficial-vercel';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

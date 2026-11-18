@@ -183,8 +183,15 @@ function enforcePrivacyState() {
 }
 
 // ============================================================================
-// INICIALIZAÇÃO, SINCRONIZAÇÃO EM NUVEM SIMULTÂNEA & PERSISTÊNCIA
+// URL BASE DO APP & SINCRONIZAÇÃO EM NUVEM SIMULTÂNEA (VERCEL)
 // ============================================================================
+
+function getAppBaseUrl() {
+  if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+    return window.location.origin;
+  }
+  return 'https://ad-midia-hub.vercel.app';
+}
 
 const PRIMARY_CLOUD_API = '/api/state';
 const FALLBACK_CLOUD_API = 'https://ad-midia-hub-escala-desativado.netlify.app/api/state';
@@ -4708,7 +4715,8 @@ function copyScheduleForWhatsApp(scheduleId) {
     lines.push('');
   }
 
-  lines.push(`_Confirme seu Check-in no aplicativo AD Mídia Hub!_`);
+  lines.push(`📲 *Confirme sua presença no App:* ${getAppBaseUrl()}/`);
+  lines.push(`_Que Deus abençoe nosso ministério e culto!_ 🙌`);
 
   const text = lines.join('\n');
   navigator.clipboard.writeText(text).then(() => {
@@ -4829,7 +4837,7 @@ function sendIndividualWhatsAppReminder(schedId, roleId, memberId) {
     `🎯 *Sua Função:* ${role.shortName} (${role.name})\n` +
     `📍 *Posto de Operação:* ${role.station}\n` +
     `👔 *Dress Code:* ${sched.dressCode || 'Preto Padrão'}\n\n` +
-    `📲 *Confirme sua presença no App:* https://ad-midia-hub-escala.netlify.app/\n\n` +
+    `📲 *Confirme sua presença no App:* ${getAppBaseUrl()}/\n\n` +
     `_Que Deus abençoe seu ministério! Contamos com sua dedicação e pontualidade._ 🙌`;
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
@@ -5697,7 +5705,7 @@ function sendMemberAccessViaWhatsApp(memberId) {
   const member = getMemberById(memberId);
   if (!member) return;
 
-  const appUrl = 'https://ad-midia-hub-escala.netlify.app';
+  const appUrl = getAppBaseUrl();
   const callName = member.nickname || member.name.split(' ')[0];
   const roleNames = (member.skills || []).map(sId => getRoleById(sId).shortName).join(', ');
   const pass = member.password || 'midia123';
@@ -5739,7 +5747,7 @@ function sendMemberAccessViaWhatsApp(memberId) {
 }
 
 function copyAllMembersAccessForGroup() {
-  const appUrl = 'https://ad-midia-hub-escala.netlify.app';
+  const appUrl = getAppBaseUrl();
   const lines = [
     `🔥 *SISTEMA OFICIAL DE ESCALAS — AD MÍDIA HUB* 🔥`,
     `Olá, equipe! Nosso sistema de escalas, storyboard e check-in por QR Code já está no ar!`,
