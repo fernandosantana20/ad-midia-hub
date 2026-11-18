@@ -2832,7 +2832,7 @@ function renderVolunteersRolesStoryboard() {
       </div>
 
       <!-- Cards do Storyboard de Quantidade por Função -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
         ${state.roles.map(role => {
           const qualifiedMembers = state.members.filter(m => Array.isArray(m.skills) && m.skills.includes(role.id));
           const count = qualifiedMembers.length;
@@ -5807,7 +5807,7 @@ function renderHeader() {
 
   return `
     <header class="sticky top-0 z-30 border-b backdrop-blur-md shadow-md">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="app-screen-container py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         
         <!-- Brand Identity -->
         <div class="flex items-center justify-between">
@@ -5960,122 +5960,124 @@ function renderHeader() {
         </div>
       </div>
 
-      <!-- Navigation Bar -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between border-t border-slate-800/50 overflow-x-auto no-scrollbar">
-        <nav class="flex items-center gap-1 py-2">
-          <button
-            onclick="setActiveTab('my_area')"
-            class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-              state.activeTab === 'my_area'
-                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-            }">
-            <i data-lucide="smartphone" class="w-4 h-4"></i>
-            <span>Meu Perfil & Credencial</span>
-          </button>
-
-          <button
-            onclick="setActiveTab('schedules')"
-            class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-              state.activeTab === 'schedules'
-                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-            }">
-            <i data-lucide="calendar-Check-2" class="w-4 h-4"></i>
-            <span>Escalas (${totalSchedules})</span>
-          </button>
-
-          ${canManage ? `
+      <!-- Navigation Bar Fluida & Sem Cortes (Computador e Celular) -->
+      <div class="border-t border-slate-800/60 bg-slate-950/40">
+        <div class="app-screen-container flex flex-col md:flex-row md:items-center justify-between gap-2.5 py-1.5">
+          <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1">
             <button
-              onclick="setActiveTab('members')"
-              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-                state.activeTab === 'members'
-                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+              onclick="setActiveTab('my_area')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'my_area'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
               }">
-              <i data-lucide="users" class="w-4 h-4"></i>
-              <span>Voluntários (${totalMembers})</span>
+              <i data-lucide="smartphone" class="w-4 h-4"></i>
+              <span>Meu Perfil & Credencial</span>
             </button>
-          ` : ''}
 
-          <button
-            onclick="setActiveTab('roles')"
-            class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-              state.activeTab === 'roles'
-                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-            }">
-            <i data-lucide="layers" class="w-4 h-4"></i>
-            <span>Funções (${state.roles.length})</span>
-          </button>
-
-          <button
-            onclick="setActiveTab('attendance')"
-            class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-              state.activeTab === 'attendance'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                : 'text-slate-400 hover:text-emerald-200 hover:bg-slate-900/50'
-            }">
-            <i data-lucide="qr-code" class="w-4 h-4 text-emerald-400"></i>
-            <span>Frequência & QR</span>
-          </button>
-
-          ${canManage ? `
             <button
-              onclick="setActiveTab('reports')"
-              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-                state.activeTab === 'reports'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              onclick="setActiveTab('schedules')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'schedules'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+              }">
+              <i data-lucide="calendar-Check-2" class="w-4 h-4"></i>
+              <span>Escalas (${totalSchedules})</span>
+            </button>
+
+            ${canManage ? `
+              <button
+                onclick="setActiveTab('members')"
+                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                  state.activeTab === 'members'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                }">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>Voluntários (${totalMembers})</span>
+              </button>
+            ` : ''}
+
+            <button
+              onclick="setActiveTab('roles')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'roles'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+              }">
+              <i data-lucide="layers" class="w-4 h-4"></i>
+              <span>Funções (${state.roles.length})</span>
+            </button>
+
+            <button
+              onclick="setActiveTab('attendance')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'attendance'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-emerald-200 hover:bg-slate-900/50'
+              }">
+              <i data-lucide="qr-code" class="w-4 h-4 text-emerald-400"></i>
+              <span>Frequência & QR</span>
+            </button>
+
+            ${canManage ? `
+              <button
+                onclick="setActiveTab('reports')"
+                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                  state.activeTab === 'reports'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-amber-200 hover:bg-slate-900/50'
+                }">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-400"></i>
+                <span>Relatórios & Cantina</span>
+              </button>
+            ` : ''}
+
+            <button
+              onclick="setActiveTab('ranking')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'ranking'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-amber-200 hover:bg-slate-900/50'
               }">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-400"></i>
-              <span>Relatórios & Cantina</span>
+              <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
+              <span>Destaques & Equipe</span>
             </button>
-          ` : ''}
+          </nav>
 
-          <button
-            onclick="setActiveTab('ranking')"
-            class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${
-              state.activeTab === 'ranking'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-slate-400 hover:text-amber-200 hover:bg-slate-900/50'
-            }">
-            <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
-            <span>Destaques & Equipe</span>
-          </button>
-        </nav>
+          <div class="flex items-center gap-2 py-1 shrink-0">
+            ${canMark ? `
+              <button
+                onclick="openScanAttendanceModal()"
+                title="Ativar câmera do celular para escanear QR Code e marcar frequência"
+                class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-extrabold shadow-md transition shrink-0 whitespace-nowrap">
+                <i data-lucide="scan-line" class="w-4 h-4"></i>
+                <span>Frequência Rápida</span>
+              </button>
+            ` : ''}
 
-        <div class="flex items-center gap-2 py-2">
-          ${canMark ? `
-            <button
-              onclick="openScanAttendanceModal()"
-              title="Ativar câmera do celular para escanear QR Code e marcar frequência"
-              class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-extrabold shadow-md transition shrink-0">
-              <i data-lucide="scan-line" class="w-4 h-4"></i>
-              <span>Frequência Rápida</span>
-            </button>
-          ` : ''}
-
-          ${isDirector ? `
-            <button
-              onclick="openRoleModal()"
-              class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
-              <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-400"></i>
-              <span>+ Nova Função</span>
-            </button>
-            <button
-              onclick="openMemberModal()"
-              class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
-              <i data-lucide="user-plus" class="w-3.5 h-3.5 text-cyan-400"></i>
-              <span>+ Voluntário</span>
-            </button>
-            <button
-              onclick="openNewScheduleModal()"
-              class="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-bold shadow-lg transition">
-              <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
-              <span>Nova Escala</span>
-            </button>
-          ` : ''}
+            ${isDirector ? `
+              <button
+                onclick="openRoleModal()"
+                class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-400"></i>
+                <span>+ Nova Função</span>
+              </button>
+              <button
+                onclick="openMemberModal()"
+                class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span>+ Voluntário</span>
+              </button>
+              <button
+                onclick="openNewScheduleModal()"
+                class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-bold shadow-lg transition shrink-0 whitespace-nowrap">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                <span>Nova Escala</span>
+              </button>
+            ` : ''}
+          </div>
         </div>
       </div>
     </header>
@@ -6933,7 +6935,7 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">${category}</h3>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
                 ${roles.map(role => {
                   const assign = sched.assignments.find(a => a.roleId === role.id);
                   const assignedMember = assign ? getMemberById(assign.memberId) : null;
@@ -7610,8 +7612,8 @@ function renderMembersTab() {
         </div>
       ` : ''}
 
-      <!-- Members Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Members Grid Responsivo (Celular, Tablet e Computador) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
         ${filteredMembers.map(member => {
           // Count how many times scheduled
           const scheduledCount = state.schedules.reduce(
@@ -7774,7 +7776,7 @@ function renderRolesTab() {
         return `
           <div class="space-y-3">
             <h2 class="text-sm font-display font-bold uppercase tracking-wider text-cyan-300 px-1">${cat}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               ${roles.map(role => {
                 const qualified = state.members.filter(m => m.skills.includes(role.id));
                 return `
@@ -8097,7 +8099,7 @@ function renderAttendanceTab() {
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         <!-- Left Column: My Personal QR Pass Card -->
-        <div class="lg:col-span-5 space-y-4">
+        <div class="lg:col-span-5 xl:col-span-4 space-y-4">
           <div class="glass-panel rounded-3xl p-6 border border-amber-500/30 text-center space-y-4">
             <div class="flex items-center justify-center gap-3">
               ${renderMemberAvatar(myMember, 'w-12 h-12 rounded-2xl text-sm', false)}
@@ -8137,7 +8139,7 @@ function renderAttendanceTab() {
         </div>
 
         <!-- Right Column: Scanner & Attendance Control (For Director / Leader / Authorized) or Personal Log -->
-        <div class="lg:col-span-7 space-y-6">
+        <div class="lg:col-span-7 xl:col-span-8 space-y-6">
           ${canMark ? `
             <div class="glass-panel rounded-3xl p-6 border border-amber-500/35 space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
@@ -8602,7 +8604,7 @@ function renderApp() {
 
   root.innerHTML = `
     ${renderHeader()}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24">
+    <main class="app-screen-container py-6 pb-24">
       ${mainContent}
     </main>
 

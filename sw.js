@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v40-atualizacao-url-oficial-vercel';
+const CACHE_NAME = 'ad-midia-hub-cache-v41-responsividade-tela-inteira-perfis-cores';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
