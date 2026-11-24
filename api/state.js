@@ -1,14 +1,15 @@
 // ============================================================================
 // AD MÍDIA HUB — VERCEL SERVERLESS CLOUD SYNC (/api/state)
-// 100% Vercel & GitHub — Zero dependência externa
+// 100% Vercel & GitHub — Persistência Permanente com Vercel Blob (Private)
 // Suporta nativamente:
-//   1) Upstash Redis / Vercel Marketplace (UPSTASH_REDIS_REST_URL + TOKEN)
-//   2) Vercel Blob Storage (BLOB_READ_WRITE_TOKEN)
+//   1) Vercel Blob Private Store (@vercel/blob + BLOB_READ_WRITE_TOKEN)
+//   2) Upstash Redis / Vercel Marketplace (UPSTASH_REDIS_REST_URL + TOKEN)
 //   3) GitHub Cloud Storage (GITHUB_TOKEN + GITHUB_REPO)
-//   4) Fallback em memória /tmp da Vercel (enquanto o Storage é conectado)
+//   4) Fallback em memória /tmp da Vercel
 // ============================================================================
 
 import { promises as fs } from 'node:fs';
+import { put, get } from '@vercel/blob';
 
 const REDIS_KEY = 'ad_midia_hub_cloud_state_v1';
 const BLOB_PATHNAME = 'ad-midia-hub-state.json';
@@ -25,7 +26,40 @@ function isAllowedOrigin(origin) {
 }
 
 // ----------------------------------------------------------------------------
-// 1. UPSTASH REDIS (VERCEL MARKETPLACE / KV)
+// 1. VERCEL BLOB STORAGE (PRIVATE STORE OFICIAL)
+// ----------------------------------------------------------------------------
+async function readFromVercelBlob() {
+  try {
+    const result = await get(BLOB_PATHNAME, { access: 'private' });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      return null;
+    }
+    const text = await new Response(result.stream).text();
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch (err) {
+    // 404 na primeira execução antes do primeiro POST
+    if (err && (err.status === 404 || String(err.message || '').toLowerCase().includes('not found'))) {
+      return null;
+    }
+    console.error('Erro ao ler Vercel Blob:', err);
+    return null;
+  }
+}
+
+async function writeToVercelBlob(dataObj) {
+  await put(BLOB_PATHNAME, JSON.stringify(dataObj), {
+    access: 'private',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: 'application/json',
+    cacheControlMaxAge: 0
+  });
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+// 2. UPSTASH REDIS (VERCEL MARKETPLACE / KV)
 // ----------------------------------------------------------------------------
 function getRedisConfig() {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
@@ -53,47 +87,6 @@ async function writeToRedis(cfg, dataObj) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(JSON.stringify(dataObj))
-  });
-  return resp.ok;
-}
-
-// ----------------------------------------------------------------------------
-// 2. VERCEL BLOB STORAGE
-// ----------------------------------------------------------------------------
-async function readFromVercelBlob(token) {
-  const listResp = await fetch(
-    `https://blob.vercel-storage.com?prefix=${encodeURIComponent(BLOB_PATHNAME)}&limit=1`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
-    }
-  );
-  if (!listResp.ok) return null;
-  const listJson = await listResp.json();
-  const blob = Array.isArray(listJson?.blobs)
-    ? listJson.blobs.find(b => b.pathname === BLOB_PATHNAME) || listJson.blobs[0]
-    : null;
-  if (!blob || !blob.url) return null;
-
-  const dataResp = await fetch(blob.url, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store'
-  });
-  if (!dataResp.ok) return null;
-  return await dataResp.json();
-}
-
-async function writeToVercelBlob(token, dataObj) {
-  const resp = await fetch(`https://blob.vercel-storage.com/${BLOB_PATHNAME}`, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-allow-overwrite': '1',
-      'x-cache-control-max-age': '0'
-    },
-    body: JSON.stringify(dataObj)
   });
   return resp.ok;
 }
@@ -206,29 +199,29 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
   const redisCfg = getRedisConfig();
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN || '';
   const ghCfg = getGitHubConfig();
 
   // 1. GET: Ler estado da nuvem (100% Vercel / GitHub)
   if (req.method === 'GET') {
     try {
+      if (hasBlobToken) {
+        const data = await readFromVercelBlob();
+        return res.status(200).json({
+          ok: Boolean(data),
+          data: data || null,
+          storageProvider: 'vercel-blob-private',
+          serverTime: new Date().toISOString()
+        });
+      }
+
       if (redisCfg) {
         const data = await readFromRedis(redisCfg);
         return res.status(200).json({
           ok: Boolean(data),
           data: data || null,
           storageProvider: 'vercel-upstash-redis',
-          serverTime: new Date().toISOString()
-        });
-      }
-
-      if (blobToken) {
-        const data = await readFromVercelBlob(blobToken);
-        return res.status(200).json({
-          ok: Boolean(data),
-          data: data || null,
-          storageProvider: 'vercel-blob',
           serverTime: new Date().toISOString()
         });
       }
@@ -281,23 +274,21 @@ export default async function handler(req, res) {
         updatedBy: typeof body.updatedBy === 'string' ? body.updatedBy.slice(0, 120) : 'system'
       };
 
+      if (hasBlobToken) {
+        await writeToVercelBlob(payloadToSave);
+        return res.status(200).json({
+          ok: true,
+          storageProvider: 'vercel-blob-private',
+          updatedAt: payloadToSave.updatedAt
+        });
+      }
+
       if (redisCfg) {
         const ok = await writeToRedis(redisCfg, payloadToSave);
         if (ok) {
           return res.status(200).json({
             ok: true,
             storageProvider: 'vercel-upstash-redis',
-            updatedAt: payloadToSave.updatedAt
-          });
-        }
-      }
-
-      if (blobToken) {
-        const ok = await writeToVercelBlob(blobToken, payloadToSave);
-        if (ok) {
-          return res.status(200).json({
-            ok: true,
-            storageProvider: 'vercel-blob',
             updatedAt: payloadToSave.updatedAt
           });
         }
