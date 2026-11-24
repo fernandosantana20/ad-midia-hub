@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v45-painel-config-sistema-exclusivo-dev';
+const CACHE_NAME = 'ad-midia-hub-cache-v46-seletor-cor-livre-contraste-automatico';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

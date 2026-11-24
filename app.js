@@ -26,7 +26,8 @@ const DEFAULT_SYSTEM_CONFIG = {
   logoDataUrl: '',
   buttonSize: 'md', // 'sm' | 'md' | 'lg'
   buttonShape: 'rounded', // 'sharp' | 'rounded' | 'pill'
-  accentColor: 'amber', // 'amber' | 'emerald' | 'sky' | 'indigo' | 'rose' | 'slate'
+  accentColor: 'amber', // 'amber' | 'emerald' | 'sky' | 'indigo' | 'rose' | 'slate' | 'custom'
+  customAccentHex: '#f59e0b',
   buttonUppercase: false,
   defaultTheme: 'dark', // 'dark' | 'light'
   layoutWidth: 'wide', // 'compact' | 'wide' | 'full'
@@ -151,6 +152,60 @@ function toggleTheme() {
   );
 }
 
+function normalizeHexColor(hex, fallback = '#f59e0b') {
+  if (!hex || typeof hex !== 'string') return fallback;
+  let c = hex.trim();
+  if (!c.startsWith('#')) c = '#' + c;
+  if (/^#[0-9a-fA-F]{3}$/.test(c)) {
+    c = '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3];
+  }
+  if (/^#[0-9a-fA-F]{6}$/.test(c)) {
+    return c.toLowerCase();
+  }
+  return fallback;
+}
+
+function hexToRgb(hex) {
+  const clean = normalizeHexColor(hex).slice(1);
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16)
+  };
+}
+
+function adjustHexBrightness(hex, factor) {
+  const { r, g, b } = hexToRgb(hex);
+  const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+  const toHex = v => clamp(v).toString(16).padStart(2, '0');
+  return `#${toHex(r * factor)}${toHex(g * factor)}${toHex(b * factor)}`;
+}
+
+function getContrastTextForHex(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.60 ? '#0f172a' : '#ffffff';
+}
+
+function applyCustomColorVars(hex) {
+  if (typeof document === 'undefined' || !document.documentElement || !document.documentElement.style) return;
+  const safeHex = normalizeHexColor(hex, '#f59e0b');
+  const { r, g, b } = hexToRgb(safeHex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const hoverHex = luminance > 0.55 ? adjustHexBrightness(safeHex, 0.86) : adjustHexBrightness(safeHex, 1.15);
+  const lightTextHex = luminance > 0.45 ? adjustHexBrightness(safeHex, 0.62) : safeHex;
+  const contrastText = getContrastTextForHex(safeHex);
+  const style = document.documentElement.style;
+  if (typeof style.setProperty === 'function') {
+    style.setProperty('--custom-accent', safeHex);
+    style.setProperty('--custom-accent-hover', hoverHex);
+    style.setProperty('--custom-accent-contrast', contrastText);
+    style.setProperty('--custom-accent-light-text', lightTextHex);
+    style.setProperty('--custom-accent-soft-bg', `rgba(${r}, ${g}, ${b}, 0.14)`);
+    style.setProperty('--custom-accent-border', `rgba(${r}, ${g}, ${b}, 0.42)`);
+  }
+}
+
 function applySystemConfig() {
   const cfg = getSystemConfig();
   if (typeof document === 'undefined') return;
@@ -165,6 +220,7 @@ function applySystemConfig() {
     root.setAttribute('data-card-radius', cfg.cardRadius || 'lg');
     root.setAttribute('data-font-scale', cfg.fontScale || 'md');
   }
+  applyCustomColorVars(cfg.customAccentHex || '#f59e0b');
   try {
     document.title = `${cfg.appName || 'AD MÍDIA HUB'} — ${cfg.churchName || 'Assembleia de Deus'}`;
   } catch (e) {}
@@ -8887,6 +8943,46 @@ function updateSystemConfigOption(field, value, labelMsg = '') {
   }
 }
 
+function previewCustomAccentColor(rawHex) {
+  if (!isDeveloperUser(getLoggedInUser())) return;
+  const hex = normalizeHexColor(rawHex, getSystemConfig().customAccentHex || '#f59e0b');
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.setAttribute('data-accent', 'custom');
+  }
+  applyCustomColorVars(hex);
+  const hexInput = document.getElementById('dev-cfg-custom-hex');
+  if (hexInput && document.activeElement !== hexInput) {
+    hexInput.value = hex.toUpperCase();
+  }
+  const colorInput = document.getElementById('dev-cfg-custom-color');
+  if (colorInput && document.activeElement !== colorInput) {
+    colorInput.value = hex;
+  }
+  const badge = document.getElementById('dev-cfg-custom-hex-badge');
+  if (badge) {
+    badge.textContent = hex.toUpperCase();
+    badge.style.backgroundColor = hex;
+    badge.style.color = getContrastTextForHex(hex);
+  }
+}
+
+function applyCustomAccentColor(rawHex) {
+  if (!guardDeveloperAction()) return;
+  const inputHex = rawHex || document.getElementById('dev-cfg-custom-hex')?.value || document.getElementById('dev-cfg-custom-color')?.value;
+  const hex = normalizeHexColor(inputHex, '');
+  if (!hex) {
+    showToast('Digite um código de cor hexadecimal válido (Ex: #3B82F6).', 'rose');
+    return;
+  }
+  const cfg = getSystemConfig();
+  cfg.accentColor = 'custom';
+  cfg.customAccentHex = hex;
+  applySystemConfig();
+  saveData();
+  renderApp();
+  showToast(`🎨 Cor personalizada ${hex.toUpperCase()} aplicada em todo o sistema e sincronizada!`, 'emerald');
+}
+
 function handleSaveSystemBranding(event) {
   if (event) event.preventDefault();
   if (!guardDeveloperAction()) return;
@@ -9457,7 +9553,7 @@ function renderSystemSettingsTab() {
           </div>
 
           <!-- Cor Principal de Destaque -->
-          <div class="space-y-2">
+          <div class="space-y-3">
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
               Cor Principal dos Botões & Destaques
             </label>
@@ -9475,6 +9571,56 @@ function renderSystemSettingsTab() {
                   <span class="truncate">${ac.label}</span>
                 </button>
               `).join('')}
+            </div>
+
+            <!-- Painel de Cor Padrão Livre (Qualquer Cor do Espectro) -->
+            <div class="p-3.5 rounded-2xl bg-slate-900/70 border ${cfg.accentColor === 'custom' ? 'border-amber-500' : 'border-slate-800'} space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <i data-lucide="pipette" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Escolher Qualquer Cor (Painel de Cor Padrão)</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400">Clique no seletor abaixo para abrir a paleta completa de cores com contraste automático</div>
+                </div>
+                <span
+                  id="dev-cfg-custom-hex-badge"
+                  class="px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold shrink-0 border border-white/15"
+                  style="background:${escapeHTML(normalizeHexColor(cfg.customAccentHex))}; color:${getContrastTextForHex(normalizeHexColor(cfg.customAccentHex))}">
+                  ${escapeHTML(normalizeHexColor(cfg.customAccentHex).toUpperCase())}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2.5">
+                <label
+                  title="Abrir painel de cor padrão do sistema"
+                  class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 cursor-pointer transition shrink-0">
+                  <input
+                    id="dev-cfg-custom-color"
+                    type="color"
+                    value="${escapeHTML(normalizeHexColor(cfg.customAccentHex))}"
+                    oninput="previewCustomAccentColor(this.value)"
+                    onchange="applyCustomAccentColor(this.value)"
+                    class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 p-0" />
+                  <span class="text-xs font-bold text-slate-200">Abrir Paleta</span>
+                </label>
+
+                <input
+                  id="dev-cfg-custom-hex"
+                  type="text"
+                  maxlength="7"
+                  value="${escapeHTML(normalizeHexColor(cfg.customAccentHex).toUpperCase())}"
+                  oninput="if(/^#?[0-9a-fA-F]{6}$/.test(this.value.trim())) previewCustomAccentColor(this.value)"
+                  placeholder="#F59E0B"
+                  class="w-28 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white uppercase focus:outline-none focus:border-amber-400" />
+
+                <button
+                  type="button"
+                  onclick="applyCustomAccentColor()"
+                  class="no-btn-scale px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition">
+                  Aplicar Cor
+                </button>
+              </div>
             </div>
           </div>
 

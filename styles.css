@@ -628,3 +628,38 @@ html[data-accent="slate"] .text-amber-400 { color: #cbd5e1 !important; }
 html[data-accent="slate"].light .text-amber-500,
 html[data-accent="slate"].light .text-amber-400,
 html[data-accent="slate"].light .text-amber-300 { color: #1e293b !important; }
+
+/* Cor Livre Personalizada (Seletor de Cor Padrão com Contraste Automático) */
+html[data-accent="custom"] {
+  --accent-amber: var(--custom-accent, #f59e0b);
+  --accent-amber-hover: var(--custom-accent-hover, #d97706);
+  --border-hover: var(--custom-accent-border, rgba(245, 158, 11, 0.45));
+}
+html[data-accent="custom"] .bg-amber-500 {
+  background-color: var(--custom-accent, #f59e0b) !important;
+  color: var(--custom-accent-contrast, #0f172a) !important;
+}
+html[data-accent="custom"] .bg-amber-500 * {
+  color: var(--custom-accent-contrast, #0f172a) !important;
+}
+html[data-accent="custom"] .hover\:bg-amber-400:hover {
+  background-color: var(--custom-accent-hover, #d97706) !important;
+}
+html[data-accent="custom"] .text-amber-500,
+html[data-accent="custom"] .text-amber-400,
+html[data-accent="custom"] .text-amber-300 {
+  color: var(--custom-accent, #f59e0b) !important;
+}
+html[data-accent="custom"].light .text-amber-500,
+html[data-accent="custom"].light .text-amber-400,
+html[data-accent="custom"].light .text-amber-300 {
+  color: var(--custom-accent-light-text, #92400e) !important;
+}
+html[data-accent="custom"] .badge-theme-amber,
+html[data-accent="custom"] [class*="bg-amber-500/"] {
+  background-color: var(--custom-accent-soft-bg, rgba(245, 158, 11, 0.14)) !important;
+  border-color: var(--custom-accent-border, rgba(245, 158, 11, 0.42)) !important;
+}
+html[data-accent="custom"] [class*="border-amber-500"] {
+  border-color: var(--custom-accent-border, rgba(245, 158, 11, 0.42)) !important;
+}
