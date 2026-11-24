@@ -1,11 +1,6 @@
 // ============================================================================
-// AD MÍDIA HUB — MOTOR DE APLICAÇÃO (DIRETOR & EQUIPE)
+// AD MÍDIA HUB — MOTOR DE APLICAÇÃO (100% VERCEL & GITHUB)
 // ============================================================================
-
-// Redirecionamento permanente e imediato de domínios antigos Netlify para o servidor oficial Vercel
-if (typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname.includes('netlify.app')) {
-  window.location.replace('https://ad-midia-hub.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
-}
 
 const STORAGE_KEYS = {
   ROLES: 'ad_midia_roles_v9_qr',
@@ -337,76 +332,84 @@ function getAppBaseUrl() {
 }
 
 const PRIMARY_CLOUD_API = '/api/state';
-const FALLBACK_CLOUD_API = 'https://ad-midia-hub-escala-desativado.netlify.app/api/state';
+
+function isUserEditingForm() {
+  if (typeof document === 'undefined' || !document.activeElement) return false;
+  const tag = (document.activeElement.tagName || '').toUpperCase();
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
 
 async function syncFromCloud(silent = false) {
+  if (silent && isUserEditingForm()) return;
   try {
     state.cloudSyncStatus = 'syncing';
     let cloudData = null;
 
-    // 1. Tentar Endpoint Primário da Nuvem (/api/state na Vercel ou Netlify)
+    // Endpoint único 100% Vercel & GitHub (/api/state)
     try {
       const res = await fetch(PRIMARY_CLOUD_API, { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
+        if (json && json.storageProvider) {
+          state.cloudStorageProvider = json.storageProvider;
+        }
         if (json && json.ok && json.data) {
           cloudData = json.data;
         }
       }
     } catch (_) {}
 
-    // 2. Fallback direto ao Netlify Blobs Database se o proxy /api/state não responder
-    if (!cloudData) {
-      try {
-        const fallbackRes = await fetch(FALLBACK_CLOUD_API, { cache: 'no-store' });
-        if (fallbackRes.ok) {
-          const fallbackJson = await fallbackRes.json();
-          if (fallbackJson && fallbackJson.ok && fallbackJson.data) {
-            cloudData = fallbackJson.data;
-          }
-        }
-      } catch (_) {}
-    }
-
     if (cloudData) {
-      if (Array.isArray(cloudData.roles) && cloudData.roles.length > 0) state.roles = cloudData.roles;
-      if (Array.isArray(cloudData.members) && cloudData.members.length > 0) state.members = cloudData.members;
-      if (Array.isArray(cloudData.schedules)) state.schedules = cloudData.schedules;
-      if (cloudData.systemConfig && typeof cloudData.systemConfig === 'object') {
-        state.systemConfig = mergeSystemConfig(cloudData.systemConfig);
-        applySystemConfig();
+      const remoteUpdatedAt = cloudData.updatedAt || '';
+      const hasRemoteChange = !state.lastCloudUpdatedAt || !remoteUpdatedAt || remoteUpdatedAt !== state.lastCloudUpdatedAt;
+
+      if (hasRemoteChange || !silent) {
+        if (Array.isArray(cloudData.roles) && cloudData.roles.length > 0) state.roles = cloudData.roles;
+        if (Array.isArray(cloudData.members) && cloudData.members.length > 0) state.members = cloudData.members;
+        if (Array.isArray(cloudData.schedules)) state.schedules = cloudData.schedules;
+        if (cloudData.systemConfig && typeof cloudData.systemConfig === 'object') {
+          state.systemConfig = mergeSystemConfig(cloudData.systemConfig);
+          applySystemConfig();
+        }
+        if (remoteUpdatedAt) state.lastCloudUpdatedAt = remoteUpdatedAt;
+
+        normalizeLoadedState();
+        saveLocalCacheOnly();
+        state.cloudSyncStatus = 'synced';
+        if (!silent || !isUserEditingForm()) {
+          renderApp();
+        }
+      } else {
+        state.cloudSyncStatus = 'synced';
       }
 
-      normalizeLoadedState();
-      saveLocalCacheOnly();
-      state.cloudSyncStatus = 'synced';
-      renderApp();
-      if (!silent) showToast('Banco em nuvem sincronizado entre todos os aparelhos!', 'emerald');
+      if (!silent) showToast('Banco em nuvem Vercel sincronizado entre todos os aparelhos!', 'emerald');
     } else {
       await pushToCloud();
-      renderApp();
+      if (!silent || !isUserEditingForm()) renderApp();
     }
   } catch (err) {
     state.cloudSyncStatus = 'local';
-    renderApp();
+    if (!silent) renderApp();
   }
 }
 
 async function pushToCloud() {
   const logged = getLoggedInUser();
+  const nowIso = new Date().toISOString();
   const payloadObj = {
     roles: state.roles,
     members: state.members,
     schedules: state.schedules,
     systemConfig: getSystemConfig(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowIso,
     updatedBy: logged?.email || 'system'
   };
   const bodyStr = JSON.stringify(payloadObj);
 
   let synced = false;
 
-  // 1. Gravar no endpoint primário (/api/state)
+  // Gravar exclusivamente no servidor Vercel (/api/state)
   try {
     const res = await fetch(PRIMARY_CLOUD_API, {
       method: 'POST',
@@ -415,35 +418,51 @@ async function pushToCloud() {
     });
     if (res.ok) {
       const json = await res.json().catch(() => null);
-      if (json && json.ok) synced = true;
+      if (json && json.storageProvider) {
+        state.cloudStorageProvider = json.storageProvider;
+      }
+      if (json && json.ok) {
+        synced = true;
+        state.lastCloudUpdatedAt = json.updatedAt || nowIso;
+      }
     }
   } catch (_) {}
 
-  // 2. Fallback direto ao Netlify Blobs se primário falhar
-  if (!synced) {
-    try {
-      const fallbackRes = await fetch(FALLBACK_CLOUD_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: bodyStr
-      });
-      if (fallbackRes.ok) {
-        const json = await fallbackRes.json().catch(() => null);
-        if (json && json.ok) synced = true;
-      }
-    } catch (_) {}
-  }
-
   state.cloudSyncStatus = synced ? 'synced' : 'local';
-  renderApp();
+  if (!isUserEditingForm()) {
+    renderApp();
+  }
 }
 
-// Sincronização periódica em segundo plano (a cada 20 segundos) e ao focar a tela
+// Sincronização periódica em segundo plano (a cada 20 segundos), foco e atalho ESC para fechar modais
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   if (typeof document.addEventListener === 'function') {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         syncFromCloud(true);
+      }
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        const modalIds = [
+          'modal-schedule',
+          'modal-member',
+          'modal-role',
+          'modal-storyboard',
+          'modal-qr',
+          'modal-signature',
+          'modal-evaluate',
+          'modal-switch-user',
+          'modal-scan-attendance',
+          'modal-image-cropper',
+          'modal-adjust-schedule'
+        ];
+        modalIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && !el.classList.contains('hidden')) {
+            el.classList.add('hidden');
+          }
+        });
       }
     });
   }

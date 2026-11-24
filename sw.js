@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v46-seletor-cor-livre-contraste-automatico';
+const CACHE_NAME = 'ad-midia-hub-cache-v47-100-porcento-vercel-github';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -42,7 +42,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('/api/state') || event.request.url.includes('/.netlify/') || event.request.url.includes('kvdb.io')) return;
+  if (event.request.url.includes('/api/state')) return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
