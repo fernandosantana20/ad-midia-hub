@@ -212,7 +212,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-xs font-extrabold shadow-lg glow-gold">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Salvar & Publicar Escala
           </button>
         </div>
@@ -246,8 +246,8 @@
         <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
           <div
             id="member-photo-preview"
-            class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg overflow-hidden">
-            <span class="text-lg font-display font-extrabold text-white">AD</span>
+            class="w-20 h-20 rounded-2xl bg-slate-800 border border-slate-700 text-amber-400 flex items-center justify-center shrink-0 shadow overflow-hidden">
+            <span class="text-lg font-display font-extrabold">AD</span>
           </div>
 
           <div class="flex-1 text-center sm:text-left space-y-2">
@@ -459,7 +459,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 text-xs font-extrabold shadow-lg glow-cyan">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Salvar Voluntário
           </button>
         </div>
@@ -595,7 +595,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white text-xs font-extrabold shadow-lg">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Salvar Função
           </button>
         </div>
@@ -682,7 +682,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 text-xs font-extrabold shadow-lg glow-cyan">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Salvar Cena no Storyboard
           </button>
         </div>
@@ -729,14 +729,14 @@
         <button
           type="button"
           onclick="downloadMemberQrBadgeImage()"
-          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 text-xs font-extrabold shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition">
+          class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow flex items-center justify-center gap-2 active:scale-95 transition">
           <i data-lucide="download" class="w-4 h-4"></i>
           <span>Salvar Imagem na Galeria (PNG)</span>
         </button>
         <button
           type="button"
           onclick="printMemberBadge()"
-          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 text-xs font-extrabold shadow-lg flex items-center justify-center gap-2 transition">
+          class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-bold shadow flex items-center justify-center gap-2 transition">
           <i data-lucide="printer" class="w-4 h-4"></i>
           <span>Imprimir Crachá PVC / Etiqueta QR</span>
         </button>
@@ -795,7 +795,7 @@
           <button
             type="button"
             onclick="saveSignatureCanvas()"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-xs font-extrabold shadow-lg glow-gold flex items-center gap-1.5 transition">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
             <i data-lucide="check" class="w-4 h-4"></i>
             <span>Confirmar Rubrica</span>
           </button>
@@ -856,7 +856,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-xs font-extrabold shadow-lg glow-gold">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Salvar Avaliação
           </button>
         </div>
@@ -921,7 +921,7 @@
           </button>
           <button
             type="submit"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 text-xs font-extrabold shadow-lg glow-cyan">
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
             Confirmar Senha & Trocar Perfil
           </button>
         </div>
@@ -1094,7 +1094,7 @@
       <!-- Cabeçalho -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <i data-lucide="crop" class="w-5 h-5"></i>
           </div>
           <div>
@@ -1204,7 +1204,7 @@
         <button
           type="button"
           onclick="applyCropperImage()"
-          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 text-slate-950 text-xs font-extrabold shadow-lg glow-cyan flex items-center gap-2 hover:brightness-110 active:scale-95 transition">
+          class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm flex items-center gap-2 transition">
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Concluir & Aplicar Foto</span>
         </button>
@@ -1220,7 +1220,7 @@
       <!-- Top Title Bar -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <div class="flex items-center gap-2.5">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow glow-cyan">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold shadow-sm">
             <i data-lucide="sliders" class="w-5 h-5"></i>
           </div>
           <div>
@@ -1251,7 +1251,7 @@
         <button
           type="button"
           onclick="closeAdjustScheduleModal()"
-          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-extrabold text-xs shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition">
+          class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition">
           Concluir Ajustes
         </button>
       </div>

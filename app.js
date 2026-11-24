@@ -19,25 +19,23 @@ const STORAGE_KEYS = {
 };
 
 const ROLE_COLOR_THEMES = {
-  cyan: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
-  amber: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  fuchsia: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30',
-  emerald: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  purple: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-  rose: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  blue: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  indigo: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+  cyan: 'badge-theme-cyan',
+  amber: 'badge-theme-amber',
+  fuchsia: 'badge-theme-purple',
+  emerald: 'badge-theme-emerald',
+  purple: 'badge-theme-purple',
+  rose: 'badge-theme-rose',
+  blue: 'badge-theme-blue',
+  indigo: 'badge-theme-indigo'
 };
 
 const AVATAR_GRADIENTS = [
-  'from-cyan-500 to-blue-600',
-  'from-amber-500 to-orange-600',
-  'from-purple-500 to-indigo-600',
-  'from-pink-500 to-rose-600',
-  'from-emerald-500 to-teal-600',
-  'from-sky-500 to-indigo-600',
-  'from-violet-500 to-purple-600',
-  'from-rose-500 to-red-600'
+  'from-slate-700 to-slate-900',
+  'from-amber-600 to-amber-800',
+  'from-zinc-700 to-zinc-900',
+  'from-stone-700 to-stone-900',
+  'from-slate-800 to-amber-900',
+  'from-neutral-700 to-neutral-900'
 ];
 
 const state = {
@@ -2392,7 +2390,7 @@ function updateScanModalRecentList() {
             <button
               type="button"
               onclick="handleAttendanceScanResult('${m.id}', '${sched.id}')"
-              class="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-[11px] shrink-0 shadow flex items-center gap-1 transition">
+              class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[11px] shrink-0 shadow-sm flex items-center gap-1 transition">
               <i data-lucide="check" class="w-3.5 h-3.5"></i>
               <span>Marcar Presença</span>
             </button>
@@ -2847,21 +2845,19 @@ function renderVolunteersRolesStoryboard() {
   });
 
   return `
-    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-cyan-500/35 space-y-5 relative overflow-hidden">
-      <div class="absolute -right-12 -bottom-12 w-56 h-56 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800/80 space-y-5 relative overflow-hidden">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
         <div class="flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-slate-950 shadow-lg glow-cyan shrink-0">
-            <i data-lucide="layout-grid" class="w-6 h-6"></i>
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i>
           </div>
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-base sm:text-lg font-display font-extrabold text-white">
                 Storyboard de Voluntários & Quantidade por Função
               </h2>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                Mapa de Capacidade da Equipe
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase badge-theme-amber">
+                Capacidade da Equipe
               </span>
             </div>
             <p class="text-xs text-slate-400">
@@ -2872,20 +2868,20 @@ function renderVolunteersRolesStoryboard() {
 
         <!-- KPIs Gerais -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
-          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-cyan-500/30 text-center">
-            <span class="text-lg font-display font-extrabold text-cyan-300 block leading-none">${totalMembers}</span>
+          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
+            <span class="text-lg font-display font-extrabold text-slate-100 block leading-none">${totalMembers}</span>
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Voluntários</span>
           </div>
-          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-fuchsia-500/30 text-center">
-            <span class="text-lg font-display font-extrabold text-fuchsia-300 block leading-none">${totalRoles}</span>
+          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
+            <span class="text-lg font-display font-extrabold text-slate-100 block leading-none">${totalRoles}</span>
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Funções</span>
           </div>
-          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-amber-500/30 text-center">
-            <span class="text-lg font-display font-extrabold text-amber-300 block leading-none">${totalAssigned}/${getScheduleTargetPositions(selectedSched)}</span>
+          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/80 border border-amber-500/30 text-center">
+            <span class="text-lg font-display font-extrabold text-amber-400 block leading-none">${totalAssigned}/${getScheduleTargetPositions(selectedSched)}</span>
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Escalados</span>
           </div>
-          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/90 border border-emerald-500/30 text-center">
-            <span class="text-lg font-display font-extrabold text-emerald-300 block leading-none">${totalQrPresences}</span>
+          <div class="px-3.5 py-2 rounded-2xl bg-slate-900/80 border border-emerald-500/30 text-center">
+            <span class="text-lg font-display font-extrabold text-emerald-400 block leading-none">${totalQrPresences}</span>
             <span class="text-[10px] uppercase tracking-wider text-slate-400">Check-ins QR</span>
           </div>
         </div>
@@ -2901,7 +2897,7 @@ function renderVolunteersRolesStoryboard() {
           const activeMember = activeAssign ? getMemberById(activeAssign.memberId) : null;
 
           return `
-            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/90 hover:border-cyan-500/40 transition flex flex-col justify-between gap-2.5">
+            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/90 hover:border-amber-500/30 transition flex flex-col justify-between gap-2.5">
               <div>
                 <div class="flex items-center justify-between gap-2 mb-2">
                   <div class="flex items-center gap-2 min-w-0">
@@ -2915,8 +2911,8 @@ function renderVolunteersRolesStoryboard() {
                   </div>
                   <span class="px-2.5 py-1 rounded-xl text-xs font-display font-extrabold shrink-0 ${
                     count > 0
-                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                      : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                      ? 'badge-theme-amber'
+                      : 'badge-theme-rose'
                   }">
                     ${count} ${count === 1 ? 'voluntário' : 'voluntários'}
                   </span>
@@ -2924,7 +2920,7 @@ function renderVolunteersRolesStoryboard() {
 
                 <!-- Barra de Proporção -->
                 <div class="w-full h-1.5 rounded-full bg-slate-950 overflow-hidden my-1.5">
-                  <div class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full" style="width: ${Math.max(count > 0 ? 14 : 0, pct)}%"></div>
+                  <div class="h-full bg-amber-500 rounded-full" style="width: ${Math.max(count > 0 ? 14 : 0, pct)}%"></div>
                 </div>
 
                 <!-- Nomes dos voluntários habilitados -->
@@ -2934,7 +2930,7 @@ function renderVolunteersRolesStoryboard() {
                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800 truncate max-w-[110px]">
                           ${escapeHTML(m.name.split(' ')[0])}
                         </span>
-                      `).join('') + (count > 4 ? `<span class="text-[10px] text-cyan-400 font-bold px-1">+${count - 4}</span>` : '')
+                      `).join('') + (count > 4 ? `<span class="text-[10px] text-amber-400 font-bold px-1">+${count - 4}</span>` : '')
                     : `<span class="text-[10px] italic text-rose-300/80">Sem voluntário cadastrado</span>`
                   }
                 </div>
@@ -3341,10 +3337,10 @@ function renderAttendanceReportGenerator() {
   const cfg = state.attendanceReportConfig;
 
   return `
-    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/40 space-y-5 relative overflow-hidden">
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800/80 space-y-5 relative overflow-hidden">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div class="flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 shadow-lg glow-emerald shrink-0">
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <i data-lucide="clipboard-check" class="w-6 h-6"></i>
           </div>
           <div>
@@ -3352,7 +3348,7 @@ function renderAttendanceReportGenerator() {
               <h2 class="text-lg sm:text-xl font-display font-extrabold text-white">
                 1. Relatório Oficial de Frequência do Evento
               </h2>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase badge-theme-emerald">
                 Exclusivo Presença & Funções (Separado da Cantina)
               </span>
             </div>
@@ -3366,7 +3362,7 @@ function renderAttendanceReportGenerator() {
           <button
             type="button"
             onclick="exportAttendanceReportPDF()"
-            class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+            class="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition">
             <i data-lucide="file-text" class="w-4 h-4"></i>
             <span>Gerar PDF de Frequência</span>
           </button>
@@ -3374,8 +3370,8 @@ function renderAttendanceReportGenerator() {
           <button
             type="button"
             onclick="exportAttendanceReportExcel()"
-            class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs sm:text-sm flex items-center gap-2 transition">
-            <i data-lucide="table" class="w-4 h-4"></i>
+            class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition">
+            <i data-lucide="table" class="w-4 h-4 text-emerald-400"></i>
             <span>Baixar Excel de Frequência</span>
           </button>
         </div>
@@ -3421,7 +3417,7 @@ function renderAttendanceReportGenerator() {
       <div class="rounded-2xl overflow-hidden border-2 border-emerald-500/50 bg-slate-950">
         <div
           id="attendance-report-banner-text"
-          class="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-display font-extrabold text-sm sm:text-base text-center py-2.5 px-4 uppercase tracking-wide">
+          class="bg-emerald-600 text-white font-display font-bold text-sm sm:text-base text-center py-2.5 px-4 uppercase tracking-wide">
           RELATÓRIO DE FREQUÊNCIA — ${escapeHTML(cfg.eventDate)} • ${escapeHTML(cfg.eventTitle)}
         </div>
 
@@ -4210,7 +4206,7 @@ function renderMonthlyCanteenReportGenerator() {
     <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-yellow-500/40 space-y-5 relative overflow-hidden bg-slate-900/60">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div class="flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-lg glow-gold shrink-0">
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
             <i data-lucide="calendar-range" class="w-6 h-6"></i>
           </div>
           <div>
@@ -4232,7 +4228,7 @@ function renderMonthlyCanteenReportGenerator() {
           <button
             type="button"
             onclick="exportMonthlyCanteenPDF()"
-            class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+            class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition">
             <i data-lucide="file-text" class="w-4 h-4"></i>
             <span>Gerar PDF Mensal</span>
           </button>
@@ -4313,19 +4309,19 @@ function renderCanteenAndAttendanceReportGenerator() {
       ${renderAttendanceReportGenerator()}
 
       <!-- 2. RELATÓRIO EXCLUSIVO DA CANTINA (SEPARADO - IDÊNTICO À IMAGEM: NOME | VALOR | ASSINATURA) -->
-      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/40 space-y-5 relative overflow-hidden">
+      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800/80 space-y-5 relative overflow-hidden">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div class="flex items-center gap-3.5">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-slate-950 shadow-lg glow-gold shrink-0">
-              <i data-lucide="utensils" class="w-6 h-6"></i>
+            <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <i data-lucide="utensils" class="w-5 h-5"></i>
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
                 <h2 class="text-lg sm:text-xl font-display font-extrabold text-white">
                   2. Relatório Exclusivo da Cantina (NOME | VALOR | ASSINATURA)
                 </h2>
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  Separado do Relatório de Frequência
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase badge-theme-amber">
+                  Separado da Frequência
                 </span>
               </div>
               <p class="text-xs text-slate-400">
@@ -4338,7 +4334,7 @@ function renderCanteenAndAttendanceReportGenerator() {
             <button
               type="button"
               onclick="exportCanteenReportPDF()"
-              class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+              class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition">
               <i data-lucide="file-text" class="w-4 h-4"></i>
               <span>Gerar PDF da Cantina</span>
             </button>
@@ -4346,8 +4342,8 @@ function renderCanteenAndAttendanceReportGenerator() {
             <button
               type="button"
               onclick="exportCanteenReportExcel()"
-              class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-extrabold text-xs sm:text-sm flex items-center gap-2 transition">
-              <i data-lucide="table" class="w-4 h-4"></i>
+              class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm flex items-center gap-2 transition">
+              <i data-lucide="table" class="w-4 h-4 text-emerald-400"></i>
               <span>Baixar Excel da Cantina</span>
             </button>
           </div>
@@ -4438,10 +4434,10 @@ function renderCanteenAndAttendanceReportGenerator() {
         </div>
 
         <!-- Pré-visualização Idêntica à Planilha da Cantina (NOME | VALOR | ASSINATURA) -->
-        <div class="rounded-2xl overflow-hidden border-2 border-amber-400/70 shadow-2xl bg-slate-950">
+        <div class="rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950">
           <div
             id="canteen-preview-banner-text"
-            class="bg-[#ffff00] text-black font-display font-extrabold text-base sm:text-lg text-center py-2.5 px-4 uppercase tracking-wide border-b-2 border-black">
+            class="bg-amber-500 text-slate-950 font-display font-extrabold text-base sm:text-lg text-center py-2.5 px-4 uppercase tracking-wide border-b border-amber-600">
             ${escapeHTML(headerBanner)}
           </div>
 
@@ -4456,7 +4452,7 @@ function renderCanteenAndAttendanceReportGenerator() {
             ` : `
               <table class="w-full text-left border-collapse">
                 <thead>
-                  <tr class="bg-slate-400 text-black text-xs font-display font-extrabold uppercase tracking-wider border-b-2 border-black">
+                  <tr class="bg-slate-800 text-slate-200 text-xs font-display font-bold uppercase tracking-wider border-b border-slate-700">
                     <th class="py-2.5 px-4 text-center border-r border-slate-700 w-5/12">NOME</th>
                     <th class="py-2.5 px-4 text-center border-r border-slate-700 w-3/12">VALOR</th>
                     <th class="py-2.5 px-4 text-center border-r border-slate-700 w-4/12">ASSINATURA</th>
@@ -5022,7 +5018,7 @@ function renderAdjustScheduleModalContent(scheduleId) {
 
   container.innerHTML = `
     <!-- 0. CONTROLE DA QUANTIDADE DE VOLUNTÁRIOS NA ESCALA (META DE VAGAS) -->
-    <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-cyan-500/10 border border-amber-500/35 space-y-3.5 shadow-xl">
+    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-amber-500/30 space-y-3.5 shadow">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
@@ -5123,14 +5119,14 @@ function renderAdjustScheduleModalContent(scheduleId) {
         </div>
         <div class="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
           <div
-            class="h-full rounded-full transition-all duration-300 ${assignments.length >= targetPositions ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-amber-500 to-orange-400'}"
+            class="h-full rounded-full transition-all duration-300 ${assignments.length >= targetPositions ? 'bg-emerald-500' : 'bg-amber-500'}"
             style="width: ${percentFilled}%"></div>
         </div>
       </div>
     </div>
 
     <!-- 1. PAINEL DE ADICIONAR VOLUNTÁRIO -->
-    <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/30 space-y-3.5 shadow-xl">
+    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-700/60 space-y-3.5 shadow">
       <div class="flex items-center justify-between">
         <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
           <i data-lucide="user-plus" class="w-4 h-4 text-cyan-400"></i>
@@ -5218,7 +5214,7 @@ function renderAdjustScheduleModalContent(scheduleId) {
 
           <button
             type="submit"
-            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg glow-emerald flex items-center justify-center gap-2 transition shrink-0">
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition shrink-0">
             <i data-lucide="plus-circle" class="w-4 h-4"></i>
             <span>Adicionar à Escala</span>
           </button>
@@ -5914,10 +5910,10 @@ function renderHeader() {
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">
+                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight text-amber-500 dark:text-amber-400">
                   AD MÍDIA HUB
                 </span>
-                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full badge-theme-amber">
                   Assembleia de Deus
                 </span>
                 ${cloudBadge}
@@ -5934,7 +5930,7 @@ function renderHeader() {
               class="p-2 rounded-xl border border-slate-700/80 hover:bg-slate-800/80 text-amber-400 transition">
               <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-4 h-4"></i>
             </button>
-            <button onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="p-2 rounded-xl border border-slate-700/80 text-cyan-300 hover:bg-slate-800">
+            <button onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="p-2 rounded-xl border border-slate-700/80 text-slate-300 hover:bg-slate-800">
               <i data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
           </div>
@@ -5950,7 +5946,7 @@ function renderHeader() {
                 onclick="setMode('director')"
                 class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   isDirector
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md font-bold'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }">
                 <i data-lucide="shield-check" class="w-4 h-4"></i>
@@ -5962,7 +5958,7 @@ function renderHeader() {
                 onclick="setMode('team')"
                 class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   !isDirector
-                    ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-md font-bold'
+                    ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
                     : 'text-slate-400 hover:text-white'
                 }">
                 <i data-lucide="user-check" class="w-4 h-4"></i>
@@ -5971,7 +5967,7 @@ function renderHeader() {
             </div>
           ` : `
             <!-- Locked Privacy Badge for Regular Team Members -->
-            <div class="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold">
+            <div class="flex items-center gap-2 px-3.5 py-2 rounded-2xl badge-theme-cyan text-xs font-bold">
               <i data-lucide="lock" class="w-3.5 h-3.5"></i>
               <span>Acesso Individual Privado</span>
             </div>
@@ -6003,7 +5999,7 @@ function renderHeader() {
             <button
               onclick="openMemberModal('${activeMember?.id || 'm1'}')"
               title="Editar Meu Perfil & Foto"
-              class="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 text-xs font-bold flex items-center gap-1 transition">
+              class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 transition">
               <i data-lucide="user-cog" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">Meu Perfil</span>
             </button>
@@ -6018,7 +6014,7 @@ function renderHeader() {
           <!-- Theme Switcher (Claro & Escuro com cores humanas) -->
           <button
             onclick="toggleTheme()"
-            title="${state.theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro (Cores Acolhedoras)'}"
+            title="${state.theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}"
             class="flex items-center gap-1.5 px-3 py-2 rounded-xl border transition shadow-sm ${
               state.theme === 'dark'
                 ? 'border-slate-800/90 bg-slate-900/80 text-amber-300 hover:border-amber-500/40'
@@ -6031,7 +6027,7 @@ function renderHeader() {
           <button
             onclick="syncFromCloud(false)"
             title="Atualizar dados da nuvem agora"
-            class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800/90 bg-slate-900/60 text-xs text-cyan-300 hover:border-cyan-500/40 transition">
+            class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800/90 bg-slate-900/60 text-xs text-slate-300 hover:text-white hover:border-slate-700 transition">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             <span>Sincronizar</span>
           </button>
@@ -6142,12 +6138,12 @@ function renderHeader() {
             </button>
           </nav>
 
-          <div class="flex items-center gap-2 py-1 shrink-0">
+          <div class="flex items-center gap-2 py-1 shrink-0 ml-auto flex-wrap">
             ${canMark ? `
               <button
                 onclick="openScanAttendanceModal()"
-                title="Ativar câmera do celular para escanear QR Code e marcar frequência"
-                class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:brightness-110 active:scale-95 text-slate-950 text-xs font-extrabold shadow-md transition shrink-0 whitespace-nowrap">
+                title="Ativar câmera para escanear QR Code e marcar frequência"
+                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-sm transition shrink-0 whitespace-nowrap">
                 <i data-lucide="scan-line" class="w-4 h-4"></i>
                 <span>Frequência Rápida</span>
               </button>
@@ -6156,19 +6152,19 @@ function renderHeader() {
             ${isDirector ? `
               <button
                 onclick="openRoleModal()"
-                class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
-                <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-400"></i>
+                class="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
                 <span>+ Nova Função</span>
               </button>
               <button
                 onclick="openMemberModal()"
-                class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
-                <i data-lucide="user-plus" class="w-3.5 h-3.5 text-cyan-400"></i>
+                class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition shrink-0 whitespace-nowrap">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5 text-slate-400"></i>
                 <span>+ Voluntário</span>
               </button>
               <button
                 onclick="openNewScheduleModal()"
-                class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-bold shadow-lg transition shrink-0 whitespace-nowrap">
+                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition shrink-0 whitespace-nowrap">
                 <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
                 <span>Nova Escala</span>
               </button>
@@ -6192,7 +6188,7 @@ function renderStoryboardPanel(sched, isDirector, highlightRoleId = null) {
     <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-cyan-500/30 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-purple-600/25 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <i data-lucide="clapperboard" class="w-5 h-5"></i>
           </div>
           <div>
@@ -6215,7 +6211,7 @@ function renderStoryboardPanel(sched, isDirector, highlightRoleId = null) {
         ${isDirector ? `
           <button
             onclick="openStoryboardModal('${sched.id}')"
-            class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg glow-cyan transition shrink-0">
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition shrink-0">
             <i data-lucide="plus-circle" class="w-4 h-4"></i>
             <span>+ Adicionar Cena</span>
           </button>
@@ -6316,7 +6312,7 @@ function renderTopRankingBanner() {
       
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
         <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-slate-950 shadow-lg glow-gold shrink-0">
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
             <i data-lucide="trophy" class="w-6 h-6"></i>
           </div>
           <div>
@@ -6356,9 +6352,9 @@ function renderTopRankingBanner() {
         ${top5.map((item, idx) => {
           const medals = ['🥇 1º Lugar', '🥈 2º Lugar', '🥉 3º Lugar', '🏅 4º Lugar', '🏅 5º Lugar'];
           const podiumStyles = [
-            'border-amber-400/60 bg-gradient-to-b from-amber-500/20 to-slate-900/90 ring-1 ring-amber-400/30',
-            'border-slate-300/40 bg-gradient-to-b from-slate-400/15 to-slate-900/90',
-            'border-orange-400/45 bg-gradient-to-b from-orange-500/15 to-slate-900/90',
+            'border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30',
+            'border-slate-400/40 bg-slate-800/60',
+            'border-amber-600/40 bg-amber-600/10',
             'border-slate-800 bg-slate-900/75',
             'border-slate-800 bg-slate-900/75'
           ];
@@ -6515,30 +6511,28 @@ function renderBirthdayWidget() {
   const birthdays = data.birthdays;
 
   return `
-    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-pink-500/35 relative overflow-hidden bg-gradient-to-br from-pink-950/20 via-slate-900/60 to-purple-950/20 shadow-xl">
-      <div class="absolute -right-10 -top-10 w-44 h-44 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/25 relative overflow-hidden">
       <!-- Header do Dashboard de Aniversariantes -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-pink-500/20">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
         <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-500 to-amber-400 text-slate-950 flex items-center justify-center font-extrabold shadow-lg glow-pink">
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-extrabold shrink-0">
             <i data-lucide="cake" class="w-6 h-6"></i>
           </div>
           <div>
             <div class="flex items-center gap-2">
               <h2 class="text-lg sm:text-xl font-display font-extrabold text-white">Aniversariantes da Semana</h2>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-500/20 text-pink-300 border border-pink-500/40">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase badge-theme-amber">
                 ${birthdays.length} ${birthdays.length === 1 ? 'comemoração' : 'comemorações'}
               </span>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">
-              Semana de <strong class="text-pink-300">${data.startOfWeekStr}</strong> a <strong class="text-pink-300">${data.endOfWeekStr}</strong> • Homenagens da Equipe AD Mídia
+              Semana de <strong class="text-amber-400">${data.startOfWeekStr}</strong> a <strong class="text-amber-400">${data.endOfWeekStr}</strong> • Homenagens da Equipe AD Mídia
             </p>
           </div>
         </div>
 
         <div class="flex items-center gap-2 self-start sm:self-auto">
-          <span class="text-[11px] font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-xl flex items-center gap-1.5">
+          <span class="text-[11px] font-semibold badge-theme-amber px-3 py-1 rounded-xl flex items-center gap-1.5">
             <span>🎉</span>
             <span>Vamos celebrar a vida dos nossos voluntários!</span>
           </span>
@@ -6559,11 +6553,11 @@ function renderBirthdayWidget() {
               return `
                 <div class="rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
                   isToday
-                    ? 'bg-gradient-to-b from-pink-500/20 via-purple-500/15 to-slate-900 border-2 border-pink-400 shadow-lg glow-pink scale-[1.02]'
-                    : 'bg-slate-900/80 border border-slate-800 hover:border-pink-500/40'
+                    ? 'bg-amber-500/10 border-2 border-amber-400/60 shadow-md scale-[1.01]'
+                    : 'bg-slate-900/80 border border-slate-800 hover:border-amber-500/30'
                 }">
                   ${isToday ? `
-                    <div class="absolute top-0 right-0 bg-gradient-to-r from-pink-500 to-amber-400 text-slate-950 text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-bl-xl shadow flex items-center gap-1">
+                    <div class="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-bl-xl shadow flex items-center gap-1">
                       <span>🎂</span>
                       <span>É HOJE! PARABÉNS!</span>
                     </div>
@@ -6577,7 +6571,7 @@ function renderBirthdayWidget() {
                       </div>
                       <div class="min-w-0 pr-6">
                         <h4 class="text-sm font-display font-extrabold text-white truncate">${escapeHTML(item.member.name)}</h4>
-                        <p class="text-xs text-cyan-300 font-medium truncate">${escapeHTML(item.member.title || 'Voluntário AD Mídia')}</p>
+                        <p class="text-xs text-amber-400 font-medium truncate">${escapeHTML(item.member.title || 'Voluntário AD Mídia')}</p>
                         <p class="text-[11px] text-slate-400 truncate mt-0.5 flex items-center gap-1">
                           <span>⛪</span>
                           <span>${escapeHTML(item.member.congregation || 'Sede')}</span>
@@ -6588,11 +6582,11 @@ function renderBirthdayWidget() {
                     <div class="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs">
                       <div>
                         <span class="text-[10px] uppercase font-bold text-slate-400 block">${item.dayOfWeekName}</span>
-                        <strong class="text-pink-300 font-display text-sm">${item.dateFormatted}</strong>
+                        <strong class="text-amber-400 font-display text-sm">${item.dateFormatted}</strong>
                       </div>
                       <div class="text-right">
                         <span class="text-[10px] uppercase font-bold text-slate-400 block">Completando</span>
-                        <strong class="text-amber-300 font-display text-sm">${item.age} anos 🎂</strong>
+                        <strong class="text-amber-400 font-display text-sm">${item.age} anos 🎂</strong>
                       </div>
                     </div>
                   </div>
@@ -6601,7 +6595,7 @@ function renderBirthdayWidget() {
                     <button
                       type="button"
                       onclick="sendBirthdayWhatsApp('${item.member.id}')"
-                      class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition">
+                      class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
                       <i data-lucide="send" class="w-3.5 h-3.5"></i>
                       <span>Dar Parabéns no WhatsApp</span>
                     </button>
@@ -6664,7 +6658,7 @@ function renderSchedulesTab() {
             ${canMark ? `
               <button
                 onclick="openScanAttendanceModal('${selected?.id || ''}')"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg glow-emerald hover:brightness-110 active:scale-95 transition">
+                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-sm transition">
                 <i data-lucide="scan-line" class="w-4 h-4"></i>
                 <span>Marcar Frequência QR</span>
               </button>
@@ -6674,7 +6668,7 @@ function renderSchedulesTab() {
               ${selected ? `
                 <button
                   onclick="openAdjustScheduleModal('${selected.id}')"
-                  class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-amber-400 font-bold text-xs sm:text-sm border border-amber-500/30 shadow-sm transition"
                   title="Adicionar ou remover voluntários da escala deste culto">
                   <i data-lucide="sliders" class="w-4 h-4"></i>
                   <span>Ajustar Escala</span>
@@ -6682,32 +6676,32 @@ function renderSchedulesTab() {
               ` : ''}
               <button
                 onclick="openNewScheduleModal()"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs sm:text-sm shadow-lg glow-gold hover:brightness-110 transition">
+                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition">
                 <i data-lucide="calendar-plus" class="w-4 h-4"></i>
                 <span>Criar Culto / Evento</span>
               </button>
               <button
                 onclick="openMemberModal()"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-semibold text-xs sm:text-sm border border-slate-700 transition">
-                <i data-lucide="user-plus" class="w-4 h-4 text-cyan-400"></i>
+                <i data-lucide="user-plus" class="w-4 h-4 text-slate-400"></i>
                 <span>Cadastrar Membro</span>
               </button>
               <button
                 onclick="openRoleModal()"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-semibold text-xs sm:text-sm border border-slate-700 transition">
-                <i data-lucide="palette" class="w-4 h-4 text-fuchsia-400"></i>
+                <i data-lucide="palette" class="w-4 h-4 text-slate-400"></i>
                 <span>+ Criar Função</span>
               </button>
               <button
                 onclick="setActiveTab('attendance')"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs sm:text-sm border border-emerald-500/40 transition">
+                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-emerald-400 font-bold text-xs sm:text-sm border border-emerald-500/30 transition">
                 <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
-                <span>Relatório Frequência & Cantina (PDF/Excel)</span>
+                <span>Relatório Frequência & Cantina</span>
               </button>
             ` : `
               <button
                 onclick="setActiveTab('my_area')"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs sm:text-sm shadow-lg glow-cyan transition">
+                class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition">
                 <i data-lucide="check-circle-2" class="w-4 h-4"></i>
                 <span>Ir para Minhas Escalas</span>
               </button>
@@ -6758,7 +6752,7 @@ function renderSchedulesTab() {
                     <!-- Date Badge -->
                     <div class="w-14 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 border ${
                       isSelected
-                        ? 'bg-gradient-to-b from-cyan-500/25 to-blue-600/25 border-cyan-400/50 text-cyan-300'
+                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
                         : 'bg-slate-900/80 border-slate-800 text-slate-300'
                     }">
                       <span class="text-[10px] font-bold uppercase tracking-wider">${d.month}</span>
@@ -6820,7 +6814,7 @@ function renderSchedulesTab() {
               ${isDirector ? `
                 <button
                   onclick="openNewScheduleModal()"
-                  class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg glow-gold hover:brightness-110 transition">
+                  class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition">
                   <i data-lucide="plus-circle" class="w-4 h-4"></i>
                   <span>Criar Primeiro Culto / Escala</span>
                 </button>
@@ -6865,7 +6859,7 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
           ${isDirector ? `
             <button
               onclick="openAdjustScheduleModal('${sched.id}')"
-              class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg glow-cyan hover:brightness-110 active:scale-95 transition"
+              class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition"
               title="Adicionar ou remover voluntários desta escala com 1 clique">
               <i data-lucide="sliders" class="w-4 h-4"></i>
               <span>⚙️ Ajustar Escala</span>
@@ -7169,7 +7163,7 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                           ` : assign?.status === 'swap_requested' ? `
                             <button
                               onclick="takeOverSwapAssignment('${sched.id}', '${role.id}')"
-                              class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-extrabold text-[11px] shadow hover:brightness-110 transition">
+                              class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shadow-sm transition">
                               🔄 Assumir Vaga (+50 XP)
                             </button>
                           ` : ''}
@@ -7416,7 +7410,7 @@ function renderMyAreaTab() {
                       </div>
                       <button
                         onclick="takeOverSwapAssignment('${item.schedule.id}', '${item.role.id}')"
-                        class="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-extrabold text-xs shrink-0 shadow">
+                        class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shrink-0 shadow-sm transition">
                         Assumir (+50 XP)
                       </button>
                     </div>
@@ -7568,7 +7562,7 @@ function renderMyAreaTab() {
                       class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition ${
                         assignment.status === 'confirmed'
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                          : 'bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 shadow-lg glow-emerald'
+                          : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
                       }">
                       <i data-lucide="check-circle" class="w-4 h-4"></i>
                       <span>${assignment.status === 'confirmed' ? 'Presença Confirmada' : 'Confirmar Minha Presença'}</span>
@@ -7700,14 +7694,14 @@ function renderMembersTab() {
           <button
             onclick="copyAllMembersAccessForGroup()"
             title="Copiar lista com link, login e senha de todos os voluntários para o grupo do WhatsApp"
-            class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs transition">
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 font-bold text-xs transition">
             <i data-lucide="share-2" class="w-4 h-4"></i>
             <span>Copiar Acessos p/ WhatsApp</span>
           </button>
 
           <button
             onclick="openMemberModal()"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-bold text-xs shadow-lg glow-cyan transition">
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition">
             <i data-lucide="user-plus" class="w-4 h-4"></i>
             <span>Novo Membro</span>
           </button>
@@ -7884,7 +7878,7 @@ function renderRolesTab() {
         ${isDirector ? `
           <button
             onclick="openRoleModal()"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-bold text-xs sm:text-sm shadow-lg hover:brightness-110 transition shrink-0">
+            class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition shrink-0">
             <i data-lucide="plus-circle" class="w-4 h-4"></i>
             <span>Criar Nova Função</span>
           </button>
@@ -8003,9 +7997,9 @@ function renderRankingTab() {
         ${top3.map((item, idx) => {
           const rankLabels = ['🥇 1º LUGAR — CAMPEÃO DE ASSIDUIDADE', '🥈 2º LUGAR — VICE-LÍDER', '🥉 3º LUGAR — DESTAQUE'];
           const cardBorders = [
-            'border-amber-400/70 bg-gradient-to-b from-amber-500/20 via-slate-900/90 to-slate-950 glow-gold',
-            'border-cyan-400/50 bg-gradient-to-b from-cyan-500/15 via-slate-900/90 to-slate-950',
-            'border-orange-400/50 bg-gradient-to-b from-orange-500/15 via-slate-900/90 to-slate-950'
+            'border-amber-500/60 bg-amber-500/10 shadow',
+            'border-slate-400/40 bg-slate-800/60 shadow',
+            'border-amber-600/40 bg-amber-600/10 shadow'
           ];
 
           return `
@@ -8217,7 +8211,7 @@ function renderAttendanceTab() {
           ${canMark ? `
             <button
               onclick="openScanAttendanceModal()"
-              class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg glow-emerald hover:brightness-110 active:scale-95 transition">
+              class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-sm transition">
               <i data-lucide="scan-line" class="w-4 h-4"></i>
               <span>Ativar Câmera QR Frequência</span>
             </button>
@@ -8225,8 +8219,8 @@ function renderAttendanceTab() {
 
           <button
             onclick="openQrModal('${myMember.id}')"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs sm:text-sm border border-slate-700 shadow transition">
-            <i data-lucide="qr-code" class="w-4 h-4 text-cyan-400"></i>
+            class="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 shadow-sm transition">
+            <i data-lucide="qr-code" class="w-4 h-4 text-amber-400"></i>
             <span>Exibir Meu QR Code</span>
           </button>
         </div>
@@ -8263,7 +8257,7 @@ function renderAttendanceTab() {
             <button
               type="button"
               onclick="downloadMemberQrBadgeImage('${myMember.id}')"
-              class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition">
+              class="w-full py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition">
               <i data-lucide="download" class="w-4 h-4"></i>
               <span>Salvar Cartão de Credencial (PNG)</span>
             </button>
@@ -8511,7 +8505,7 @@ function renderGmailLoginScreen() {
         <div class="absolute -right-12 -top-12 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="text-center space-y-2">
-          <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-amber-500/20 border border-cyan-400/50 flex items-center justify-center mx-auto glow-cyan">
+          <div class="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
             <i data-lucide="flame" class="w-8 h-8 text-amber-400"></i>
           </div>
           <span class="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
@@ -8636,7 +8630,7 @@ function renderGmailLoginScreen() {
 
             <button
               type="submit"
-              class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-xl transition">
+              class="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm transition">
               Concluir Cadastro & Entrar
             </button>
           </form>
@@ -8682,7 +8676,7 @@ function renderReportsAndCanteenTab() {
       ${renderVolunteersRolesStoryboard()}
 
       <!-- Top Action Banner -->
-      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/35 relative overflow-hidden bg-gradient-to-br from-amber-950/20 via-slate-900/60 to-yellow-950/20 shadow-xl">
+      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 relative overflow-hidden bg-slate-900/60 shadow">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 mb-2">
@@ -8699,13 +8693,13 @@ function renderReportsAndCanteenTab() {
           <div class="flex flex-wrap items-center gap-2.5">
             <button
               onclick="exportCanteenReportPDF()"
-              class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+              class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition">
               <i data-lucide="file-text" class="w-4 h-4"></i>
               <span>Imprimir Lista Cantina</span>
             </button>
             <button
               onclick="exportAttendanceReportPDF()"
-              class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg flex items-center gap-2 transition">
+              class="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition">
               <i data-lucide="clipboard-check" class="w-4 h-4"></i>
               <span>Imprimir Relatório Frequência</span>
             </button>
@@ -8766,7 +8760,7 @@ function renderApp() {
       <button
         onclick="openScanAttendanceModal()"
         title="Marcar Frequência QR Code com a Câmera"
-        class="sm:hidden fixed bottom-6 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 text-slate-950 flex items-center justify-center shadow-2xl glow-emerald active:scale-90 transition border-2 border-emerald-300">
+        class="sm:hidden fixed bottom-6 right-5 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-xl active:scale-90 transition border-2 border-emerald-400">
         <i data-lucide="scan-line" class="w-6 h-6"></i>
       </button>
     ` : ''}
