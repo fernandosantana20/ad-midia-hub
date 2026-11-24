@@ -2,6 +2,11 @@
 // AD MÍDIA HUB — MOTOR DE APLICAÇÃO (DIRETOR & EQUIPE)
 // ============================================================================
 
+// Redirecionamento permanente e imediato de domínios antigos Netlify para o servidor oficial Vercel
+if (typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname.includes('netlify.app')) {
+  window.location.replace('https://ad-midia-hub.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
+}
+
 const STORAGE_KEYS = {
   ROLES: 'ad_midia_roles_v9_qr',
   MEMBERS: 'ad_midia_members_v9_qr',
@@ -43,9 +48,11 @@ const state = {
   activeTab: 'schedules', // 'schedules' | 'my_area' | 'members' | 'roles' | 'attendance' | 'ranking'
   selectedScheduleId: null,
   memberSearch: '',
+  memberSort: 'name_asc', // 'name_asc' (padrão A-Z) | 'name_desc' (Z-A) | 'date_desc' (recentes) | 'date_asc' (antigos)
   roleFilter: 'all',
   scheduleVolunteerSearch: '',
   attendanceVolunteerSearch: '',
+  attendanceSort: 'name_asc', // 'name_asc' (padrão A-Z) | 'name_desc' (Z-A) | 'date_desc' (recentes) | 'date_asc' (antigos)
   cloudSyncStatus: 'syncing', // 'synced' | 'syncing' | 'local'
   roles: [],
   members: [],
@@ -62,6 +69,7 @@ const state = {
     eventDate: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }).replace('/', '.'),
     eventTitle: 'MÍDIA ASSEMBLEIA GERAL',
     sourceFilter: 'all', // 'all' | 'qr_present' | 'scheduled'
+    sort: 'name_asc', // 'name_asc' (padrão A-Z) | 'name_desc' (Z-A) | 'date_desc' (recentes) | 'date_asc' (antigos)
     defaultValue: '',
     customRows: [] // [{ id, name, value, signature }]
   }
@@ -187,8 +195,10 @@ function enforcePrivacyState() {
 // ============================================================================
 
 function getAppBaseUrl() {
-  if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
-    return window.location.origin;
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    if (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')) {
+      return window.location.origin;
+    }
   }
   return 'https://ad-midia-hub.vercel.app';
 }
@@ -447,6 +457,19 @@ function normalizeLoadedState() {
     } else if (typeof m.canMarkAttendance !== 'boolean') {
       m.canMarkAttendance = false;
     }
+
+    // Garantir data de registro confiável para ordenação precisa por data
+    if (!m.createdAt) {
+      if (m.id && m.id.startsWith('m_')) {
+        const ts = Number(m.id.split('_')[1]);
+        m.createdAt = !isNaN(ts) && ts > 1000000000 ? new Date(ts).toISOString() : new Date(2025, 0, 1 + idx, 10, 0, 0).toISOString();
+      } else if (m.id && /^m\d+$/i.test(m.id)) {
+        const num = parseInt(m.id.replace(/\D/g, ''), 10) || (idx + 1);
+        m.createdAt = new Date(2025, 0, num, 10, 0, 0).toISOString();
+      } else {
+        m.createdAt = new Date(2025, 0, 1 + idx, 10, 0, 0).toISOString();
+      }
+    }
   });
 
   enforcePrivacyState();
@@ -509,6 +532,43 @@ function saveData() {
 
 function sortSchedules() {
   state.schedules.sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+}
+
+// ============================================================================
+// SISTEMA CENTRAL DE ORDENAÇÃO DE LISTAS (A-Z, Z-A E DATA DE REGISTRO)
+// ============================================================================
+
+function sortItemsByCriteria(items, criteria = 'name_asc', nameGetter = (x) => x?.name, dateGetter = (x) => x?.createdAt || x?.date || x?.id) {
+  if (!Array.isArray(items)) return [];
+  const list = [...items];
+  list.sort((a, b) => {
+    const nameA = String(nameGetter(a) || '').trim();
+    const nameB = String(nameGetter(b) || '').trim();
+    if (criteria === 'name_asc') {
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    }
+    if (criteria === 'name_desc') {
+      return nameB.localeCompare(nameA, 'pt-BR', { sensitivity: 'base' });
+    }
+    if (criteria === 'date_desc') {
+      const valA = dateGetter(a);
+      const valB = dateGetter(b);
+      const timeA = new Date(valA).getTime() || (typeof valA === 'string' && valA.startsWith('m_') ? Number(valA.split('_')[1]) : 0);
+      const timeB = new Date(valB).getTime() || (typeof valB === 'string' && valB.startsWith('m_') ? Number(valB.split('_')[1]) : 0);
+      if (timeB !== timeA) return timeB - timeA;
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    }
+    if (criteria === 'date_asc') {
+      const valA = dateGetter(a);
+      const valB = dateGetter(b);
+      const timeA = new Date(valA).getTime() || (typeof valA === 'string' && valA.startsWith('m_') ? Number(valA.split('_')[1]) : 0);
+      const timeB = new Date(valB).getTime() || (typeof valB === 'string' && valB.startsWith('m_') ? Number(valB.split('_')[1]) : 0);
+      if (timeA !== timeB) return timeA - timeB;
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    }
+    return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+  });
+  return list;
 }
 
 function resetDemoData() {
@@ -3457,6 +3517,8 @@ function syncReportRowsFromSelection() {
       const rowId = 'row_' + m.id + '_' + a.roleId;
       rows.push({
         id: rowId,
+        memberId: m.id,
+        createdAt: m.createdAt,
         name: m.name.toUpperCase(),
         value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
         signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
@@ -3472,6 +3534,8 @@ function syncReportRowsFromSelection() {
         const rowId = 'row_qr_' + m.id;
         rows.push({
           id: rowId,
+          memberId: m.id,
+          createdAt: m.createdAt,
           name: m.name.toUpperCase(),
           value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
           signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
@@ -3486,6 +3550,8 @@ function syncReportRowsFromSelection() {
       const rowId = 'row_all_' + m.id;
       rows.push({
         id: rowId,
+        memberId: m.id,
+        createdAt: m.createdAt,
         name: m.name.toUpperCase(),
         value: cfg.rowValuesById[rowId] !== undefined ? cfg.rowValuesById[rowId] : valDefault,
         signature: '' // LIMPO: Espaço em branco para assinatura manual com caneta
@@ -3493,25 +3559,34 @@ function syncReportRowsFromSelection() {
     });
   }
 
-  cfg.customRows = rows;
+  // Ordenação da Lista da Cantina (Padrão: A-Z)
+  const canteenSortMode = cfg.sort || 'name_asc';
+  cfg.customRows = sortItemsByCriteria(
+    rows,
+    canteenSortMode,
+    r => r.name,
+    r => r.createdAt || r.id
+  );
 }
 
 function handleReportFilterChange() {
   const schedSel = document.getElementById('rep-schedule-select')?.value || state.selectedScheduleId || 'all_members';
   const sourceSel = document.getElementById('rep-source-select')?.value || state.reportConfig.sourceFilter || 'scheduled';
+  const sortSel = document.getElementById('rep-sort-select')?.value || state.reportConfig.sort || 'name_asc';
   const dateInp = document.getElementById('rep-date-input')?.value || state.reportConfig.eventDate;
   const titleInp = document.getElementById('rep-title-input')?.value || state.reportConfig.eventTitle;
   const valInp = document.getElementById('rep-default-val')?.value ?? state.reportConfig.defaultValue;
 
   state.reportConfig.scheduleId = schedSel;
   state.reportConfig.sourceFilter = sourceSel;
+  state.reportConfig.sort = sortSel;
   state.reportConfig.eventDate = dateInp;
   state.reportConfig.eventTitle = titleInp;
   state.reportConfig.defaultValue = valInp;
 
   syncReportRowsFromSelection();
   renderApp();
-  showToast('Lista da Cantina atualizada com o filtro de voluntários!', 'amber');
+  showToast('Lista da Cantina atualizada com o filtro e ordenação selecionados!', 'amber');
 }
 
 function updateReportHeaderField(field, value) {
@@ -3968,7 +4043,7 @@ function getMonthlyCanteenSummary(targetMonth = null) {
   const currentMonthStr = targetMonth || (state.monthlyReportFilter || new Date().toISOString().slice(0, 7));
   const [year, month] = currentMonthStr.split('-');
 
-  const memberRows = [];
+  let memberRows = [];
   const defaultValNum = parseFloat(String(state.reportConfig.defaultValue || '10').replace(',', '.')) || 10;
 
   state.members.forEach(m => {
@@ -3985,7 +4060,13 @@ function getMonthlyCanteenSummary(targetMonth = null) {
     }
   });
 
-  memberRows.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const canteenSortMode = state.reportConfig.sort || 'name_asc';
+  memberRows = sortItemsByCriteria(
+    memberRows,
+    canteenSortMode,
+    r => r.name,
+    r => r.member?.createdAt || r.member?.id
+  );
 
   const totalServicesInMonth = new Set();
   state.members.forEach(m => {
@@ -4273,7 +4354,7 @@ function renderCanteenAndAttendanceReportGenerator() {
         </div>
 
         <!-- Painel de Configuração da Lista da Cantina -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900/75 p-4 rounded-2xl border border-slate-800">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-slate-900/75 p-4 rounded-2xl border border-slate-800">
           <div>
             <label class="block text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-1">1. Escala / Culto do Dia</label>
             <select
@@ -4303,7 +4384,20 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">3. Data na Barra Amarela</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">3. Ordenação da Lista</label>
+            <select
+              id="rep-sort-select"
+              onchange="handleReportFilterChange()"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-amber-400">
+              <option value="name_asc" ${(cfg.sort || 'name_asc') === 'name_asc' ? 'selected' : ''}>Ordem Alfabética (A a Z)</option>
+              <option value="name_desc" ${cfg.sort === 'name_desc' ? 'selected' : ''}>Ordem Alfabética (Z a A)</option>
+              <option value="date_desc" ${cfg.sort === 'date_desc' ? 'selected' : ''}>Data de Registro (Recentes)</option>
+              <option value="date_asc" ${cfg.sort === 'date_asc' ? 'selected' : ''}>Data de Registro (Antigos)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">4. Data na Barra Amarela</label>
             <input
               id="rep-date-input"
               type="text"
@@ -4314,7 +4408,7 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">4. Título na Barra Amarela</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">5. Título na Barra Amarela</label>
             <input
               id="rep-title-input"
               type="text"
@@ -4325,7 +4419,7 @@ function renderCanteenAndAttendanceReportGenerator() {
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">5. Valor Padrão Cantina</label>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">6. Valor Padrão Cantina</label>
             <div class="flex gap-1.5">
               <input
                 id="rep-default-val"
@@ -5650,12 +5744,14 @@ function handleSaveMember(e) {
       }
       existing.skills = skills;
       existing.photoUrl = photoUrl;
+      existing.createdAt = existing.createdAt || new Date().toISOString();
     }
     showToast(`Dados salvos e sincronizados na nuvem!`, 'cyan');
   } else {
     const finalRoleType = canManage ? roleType : 'member';
     const newMember = {
       id: 'm_' + Date.now(),
+      createdAt: new Date().toISOString(),
       name,
       email: normalizedEmail,
       password: passwordInput,
@@ -5962,8 +6058,8 @@ function renderHeader() {
 
       <!-- Navigation Bar Fluida & Sem Cortes (Computador e Celular) -->
       <div class="border-t border-slate-800/60 bg-slate-950/40">
-        <div class="app-screen-container flex flex-col md:flex-row md:items-center justify-between gap-2.5 py-1.5">
-          <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1">
+        <div class="app-screen-container flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 py-1.5">
+          <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1 max-w-full">
             <button
               onclick="setActiveTab('my_area')"
               class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
@@ -6945,9 +7041,11 @@ function renderSelectedScheduleDetail(sched, isDirector, totalPositions, filledP
                     (assignedMember.nickname || '').toLowerCase().includes(schedVolunteerQuery)
                   );
 
-                  // Sort members so specialists in this role appear first in the dropdown
-                  const skilledMembers = state.members.filter(m => m.skills.includes(role.id));
-                  const otherMembers = state.members.filter(m => !m.skills.includes(role.id));
+                  // Sort members alphabetically so specialists and others appear in A-Z order
+                  const skilledMembers = state.members.filter(m => m.skills.includes(role.id))
+                    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
+                  const otherMembers = state.members.filter(m => !m.skills.includes(role.id))
+                    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
 
                   const statusBadge = !assign
                     ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Vaga Aberta</span>`
@@ -7519,6 +7617,13 @@ function renderMembersTab() {
     return matchesSearch && matchesRole;
   });
 
+  const sortedMembers = sortItemsByCriteria(
+    filteredMembers,
+    state.memberSort || 'name_asc',
+    m => m.name,
+    m => m.createdAt || m.id
+  );
+
   return `
     <div class="space-y-6 animate-view">
       <!-- Storyboard de Quantidade de Voluntários e Funções -->
@@ -7577,6 +7682,21 @@ function renderMembersTab() {
             `).join('')}
           </select>
 
+          <!-- Filtro de Ordenação: A-Z, Z-A e Data de Registro -->
+          <div class="flex items-center gap-1.5">
+            <label for="member-sort-select" class="text-xs font-bold text-slate-400 hidden xl:inline">Ordenar:</label>
+            <select
+              id="member-sort-select"
+              onchange="state.memberSort = this.value; renderApp();"
+              class="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-semibold"
+              title="Ordenar Lista de Voluntários">
+              <option value="name_asc" ${(state.memberSort || 'name_asc') === 'name_asc' ? 'selected' : ''}>Ordem Alfabética (A a Z)</option>
+              <option value="name_desc" ${state.memberSort === 'name_desc' ? 'selected' : ''}>Ordem Alfabética (Z a A)</option>
+              <option value="date_desc" ${state.memberSort === 'date_desc' ? 'selected' : ''}>Data de Registro (Mais recentes)</option>
+              <option value="date_asc" ${state.memberSort === 'date_asc' ? 'selected' : ''}>Data de Registro (Mais antigos)</option>
+            </select>
+          </div>
+
           <button
             onclick="copyAllMembersAccessForGroup()"
             title="Copiar lista com link, login e senha de todos os voluntários para o grupo do WhatsApp"
@@ -7614,7 +7734,7 @@ function renderMembersTab() {
 
       <!-- Members Grid Responsivo (Celular, Tablet e Computador) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        ${filteredMembers.map(member => {
+        ${sortedMembers.map(member => {
           // Count how many times scheduled
           const scheduledCount = state.schedules.reduce(
             (acc, s) => acc + (s.assignments.some(a => a.memberId === member.id) ? 1 : 0),
@@ -8043,22 +8163,38 @@ function renderAttendanceTab() {
   const visibleLogs = (canMark || canManage) ? allLogs : allLogs.filter(item => item.member.id === myMember?.id);
 
   const attQuery = (state.attendanceVolunteerSearch || '').toLowerCase().trim();
-  const displayedAttendanceMembers = attQuery
+  const attSort = state.attendanceSort || 'name_asc';
+
+  let displayedAttendanceMembers = attQuery
     ? state.members.filter(m =>
         (m.name || '').toLowerCase().includes(attQuery) ||
         (m.nickname || '').toLowerCase().includes(attQuery) ||
         (m.qrToken || '').toLowerCase().includes(attQuery) ||
         (m.title || '').toLowerCase().includes(attQuery)
       )
-    : state.members;
+    : [...state.members];
 
-  const displayedHistoryLogs = attQuery
+  displayedAttendanceMembers = sortItemsByCriteria(
+    displayedAttendanceMembers,
+    attSort,
+    m => m.name,
+    m => m.createdAt || m.id
+  );
+
+  let displayedHistoryLogs = attQuery
     ? visibleLogs.filter(item =>
         (item.member?.name || '').toLowerCase().includes(attQuery) ||
         (item.member?.nickname || '').toLowerCase().includes(attQuery) ||
         (item.log?.eventTitle || '').toLowerCase().includes(attQuery)
       )
-    : visibleLogs;
+    : [...visibleLogs];
+
+  displayedHistoryLogs = sortItemsByCriteria(
+    displayedHistoryLogs,
+    attSort,
+    item => item.member?.name,
+    item => (item.log?.date ? `${item.log.date}T${item.log.time || '00:00'}` : item.member?.createdAt)
+  );
 
   return `
     <div class="space-y-6 animate-view">
@@ -8211,35 +8347,52 @@ function renderAttendanceTab() {
                   </span>
                 </div>
 
-                <!-- Campo e Botão de Pesquisa de Voluntário na Frequência -->
-                <div class="flex items-center gap-2">
-                  <div class="relative flex-1">
-                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                    <input
-                      id="attendance-volunteer-search-input"
-                      type="text"
-                      placeholder="Pesquisar voluntário na frequência (Ex: Wesley, Lucas)..."
-                      value="${escapeHTML(state.attendanceVolunteerSearch || '')}"
-                      onkeydown="if(event.key === 'Enter') executeAttendanceVolunteerSearch();"
-                      class="w-full bg-slate-900/90 border border-slate-700 focus:border-emerald-400 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none">
-                  </div>
-                  <button
-                    type="button"
-                    onclick="executeAttendanceVolunteerSearch()"
-                    class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md glow-emerald transition shrink-0"
-                    title="Pesquisar Voluntário na Frequência">
-                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
-                    <span>Pesquisar</span>
-                  </button>
-                  ${state.attendanceVolunteerSearch ? `
+                <!-- Barra de Pesquisa e Filtro de Ordenação da Frequência -->
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 flex-1">
+                    <div class="relative flex-1">
+                      <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                      <input
+                        id="attendance-volunteer-search-input"
+                        type="text"
+                        placeholder="Pesquisar voluntário na frequência (Ex: Wesley, Lucas)..."
+                        value="${escapeHTML(state.attendanceVolunteerSearch || '')}"
+                        onkeydown="if(event.key === 'Enter') executeAttendanceVolunteerSearch();"
+                        class="w-full bg-slate-900/90 border border-slate-700 focus:border-emerald-400 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
                     <button
                       type="button"
-                      onclick="clearAttendanceVolunteerSearch()"
-                      class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold shrink-0"
-                      title="Limpar pesquisa na frequência">
-                      ✕ Limpar
+                      onclick="executeAttendanceVolunteerSearch()"
+                      class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md glow-emerald transition shrink-0"
+                      title="Pesquisar Voluntário na Frequência">
+                      <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                      <span>Pesquisar</span>
                     </button>
-                  ` : ''}
+                    ${state.attendanceVolunteerSearch ? `
+                      <button
+                        type="button"
+                        onclick="clearAttendanceVolunteerSearch()"
+                        class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold shrink-0"
+                        title="Limpar pesquisa na frequência">
+                        ✕ Limpar
+                      </button>
+                    ` : ''}
+                  </div>
+
+                  <!-- Filtro de Ordenação da Frequência: A-Z, Z-A e Data de Registro -->
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <label for="attendance-sort-select" class="text-xs font-bold text-slate-400 hidden md:inline">Ordenar:</label>
+                    <select
+                      id="attendance-sort-select"
+                      onchange="state.attendanceSort = this.value; renderApp();"
+                      class="bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-semibold"
+                      title="Ordenar Lista de Frequência">
+                      <option value="name_asc" ${(state.attendanceSort || 'name_asc') === 'name_asc' ? 'selected' : ''}>Ordem Alfabética (A a Z)</option>
+                      <option value="name_desc" ${state.attendanceSort === 'name_desc' ? 'selected' : ''}>Ordem Alfabética (Z a A)</option>
+                      <option value="date_desc" ${state.attendanceSort === 'date_desc' ? 'selected' : ''}>Data de Registro (Mais recentes)</option>
+                      <option value="date_asc" ${state.attendanceSort === 'date_asc' ? 'selected' : ''}>Data de Registro (Mais antigos)</option>
+                    </select>
+                  </div>
                 </div>
 
                 ${state.attendanceVolunteerSearch ? `
