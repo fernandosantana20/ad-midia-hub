@@ -81,7 +81,7 @@ const state = {
   authEmail: localStorage.getItem(STORAGE_KEYS.AUTH_EMAIL) || '',
   mode: localStorage.getItem(STORAGE_KEYS.MODE) || 'director', // 'director' | 'team'
   activeMemberId: localStorage.getItem(STORAGE_KEYS.ACTIVE_MEMBER) || 'm1',
-  activeTab: 'schedules', // 'schedules' | 'my_area' | 'members' | 'roles' | 'attendance' | 'ranking'
+  activeTab: 'dashboard', // 'dashboard' | 'schedules' | 'my_area' | 'members' | 'roles' | 'attendance' | 'reports' | 'ranking' | 'system_settings'
   selectedScheduleId: null,
   memberSearch: '',
   memberSort: 'name_asc', // 'name_asc' (padrão A-Z) | 'name_desc' (Z-A) | 'date_desc' (recentes) | 'date_asc' (antigos)
@@ -6420,6 +6420,17 @@ function renderHeader() {
         <div class="app-screen-container flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 py-1.5">
           <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1 max-w-full">
             <button
+              onclick="setActiveTab('dashboard')"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                state.activeTab === 'dashboard'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+              }">
+              <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+              <span>Dashboard</span>
+            </button>
+
+            <button
               onclick="setActiveTab('my_area')"
               class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
                 state.activeTab === 'my_area'
@@ -7087,15 +7098,6 @@ function renderSchedulesTab() {
         </div>
       </div>
 
-      <!-- Storyboard de Quantidade de Voluntários e Funções -->
-      ${renderVolunteersRolesStoryboard()}
-
-      <!-- Dashboard de Aniversariantes da Semana -->
-      ${renderBirthdayWidget()}
-
-      <!-- Top 5 Gamification Ranking Banner -->
-      ${renderTopRankingBanner()}
-
       <!-- Interactive Storyboard for the Selected Service -->
       ${selected ? renderStoryboardPanel(selected, isDirector) : ''}
 
@@ -7682,9 +7684,6 @@ function renderMyAreaTab() {
         </div>
       </div>
 
-      <!-- Gamification Ranking Strip in Team View -->
-      ${renderTopRankingBanner()}
-
       <!-- VOLUTS FEATURE: Bloqueio de Datas / Indisponibilidade & Mural de Substituições -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
@@ -7997,12 +7996,6 @@ function renderMembersTab() {
 
   return `
     <div class="space-y-6 animate-view">
-      <!-- Storyboard de Quantidade de Voluntários e Funções -->
-      ${renderVolunteersRolesStoryboard()}
-
-      <!-- Dashboard de Aniversariantes da Semana -->
-      ${renderBirthdayWidget()}
-
       <!-- Search & Filter Bar -->
       <div class="glass-panel rounded-3xl p-5 border border-slate-800/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -8241,9 +8234,6 @@ function renderRolesTab() {
 
   return `
     <div class="space-y-6 animate-view">
-      <!-- Storyboard de Quantidade de Voluntários e Funções -->
-      ${renderVolunteersRolesStoryboard()}
-
       <div class="glass-panel rounded-3xl p-6 border border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-display font-extrabold text-white">Estações & Funções da Mídia (${state.roles.length})</h1>
@@ -8864,9 +8854,6 @@ function renderAttendanceTab() {
 
       <!-- Relatório de Frequência & Lista para Cantina (PDF & Excel) -->
       ${canManage ? renderCanteenAndAttendanceReportGenerator() : ''}
-
-      <!-- Storyboard de Quantidade de Voluntários e Funções -->
-      ${renderVolunteersRolesStoryboard()}
     </div>
   `;
 }
@@ -9056,9 +9043,6 @@ function renderReportsAndCanteenTab() {
 
   return `
     <div class="space-y-6 animate-view">
-      <!-- Storyboard de Quantidade de Voluntários e Funções -->
-      ${renderVolunteersRolesStoryboard()}
-
       <!-- Top Action Banner -->
       <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 relative overflow-hidden bg-slate-900/60 shadow">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -10126,6 +10110,112 @@ function renderSystemSettingsTab() {
 }
 
 // ============================================================================
+// ABA 0: DASHBOARD EXECUTIVO EXCLUSIVO (VISÃO GERAL LIMPA & CENTRALIZADA)
+// ============================================================================
+
+function renderDashboardTab() {
+  const loggedUser = getLoggedInUser();
+  const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
+  const canMark = canMarkAttendanceUser(effectiveUser);
+  const isDirector = canManage && (state.mode === 'director' || effectiveUser?.roleType === 'leader');
+  const cfg = getSystemConfig();
+
+  const nextSchedule = state.schedules[0] || null;
+  const nextDate = nextSchedule ? formatDateBR(nextSchedule.date) : null;
+  const nextConfirmed = nextSchedule ? nextSchedule.assignments.filter(a => a.status === 'confirmed').length : 0;
+  const nextTarget = nextSchedule ? getScheduleTargetPositions(nextSchedule) : 0;
+  const totalSwaps = state.schedules.reduce((acc, s) => acc + s.assignments.filter(a => a.status === 'swap_requested').length, 0);
+
+  return `
+    <div class="space-y-6 animate-view">
+      <!-- Cabeçalho Executivo do Dashboard -->
+      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800/90 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold badge-theme-amber mb-2">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+            <span>PAINEL EXECUTIVO • ${escapeHTML(cfg.appName || 'AD MÍDIA HUB')}</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-display font-extrabold text-white">
+            Dashboard Geral
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Resumo centralizado da equipe, funções, próximo culto, aniversariantes e ranking de engajamento.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          ${isDirector ? `
+            <button
+              type="button"
+              onclick="openNewScheduleModal()"
+              class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition">
+              <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+              <span>Nova Escala</span>
+            </button>
+          ` : ''}
+          ${canMark ? `
+            <button
+              type="button"
+              onclick="openScanAttendanceModal()"
+              class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-sm transition">
+              <i data-lucide="scan-line" class="w-4 h-4"></i>
+              <span>Frequência QR</span>
+            </button>
+          ` : ''}
+          <button
+            type="button"
+            onclick="setActiveTab('schedules')"
+            class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-bold text-xs transition">
+            <i data-lucide="calendar-check-2" class="w-4 h-4"></i>
+            <span>Abrir Escalas</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumo de Voluntários & Funções (Exclusivo do Dashboard) -->
+      ${renderVolunteersRolesStoryboard()}
+
+      <!-- Card Rápido: Próximo Culto & Alertas -->
+      ${nextSchedule ? `
+        <div class="glass-panel rounded-3xl p-5 border border-slate-800/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5 min-w-0">
+            <div class="w-14 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/35 text-amber-300 flex flex-col items-center justify-center shrink-0">
+              <span class="text-[10px] font-bold uppercase">${nextDate.month}</span>
+              <span class="text-xl font-display font-extrabold leading-none my-0.5 text-white">${nextDate.day}</span>
+              <span class="text-[10px] text-slate-400">${nextDate.weekday.split('-')[0]}</span>
+            </div>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full badge-theme-cyan">Próximo Culto</span>
+                <span class="text-xs text-slate-400 font-semibold">${nextSchedule.callTime} chegada • ${nextSchedule.startTime} início</span>
+                ${totalSwaps > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full badge-theme-rose">${totalSwaps} pedido(s) de troca</span>` : ''}
+              </div>
+              <h2 class="text-lg font-display font-extrabold text-white mt-1 truncate">${escapeHTML(nextSchedule.title)}</h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                <strong>${nextSchedule.assignments.length}/${nextTarget}</strong> escalados • <strong class="text-emerald-400">${nextConfirmed} confirmados</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="selectSchedule('${nextSchedule.id}'); setActiveTab('schedules');"
+            class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition shrink-0">
+            Ver Escala Completa →
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- Aniversariantes da Semana (Exclusivo do Dashboard) -->
+      ${renderBirthdayWidget()}
+
+      <!-- Ranking de Engajamento & Top 5 (Exclusivo do Dashboard) -->
+      ${renderTopRankingBanner()}
+    </div>
+  `;
+}
+
+// ============================================================================
 // RENDERIZAÇÃO PRINCIPAL
 // ============================================================================
 
@@ -10143,7 +10233,9 @@ function renderApp() {
   }
 
   let mainContent = '';
-  if (state.activeTab === 'schedules') {
+  if (state.activeTab === 'dashboard') {
+    mainContent = renderDashboardTab();
+  } else if (state.activeTab === 'schedules') {
     mainContent = renderSchedulesTab();
   } else if (state.activeTab === 'my_area') {
     mainContent = renderMyAreaTab();
@@ -10170,11 +10262,11 @@ function renderApp() {
   const showMobileInstallBanner = !isPwaInstalled() && !pwaBannerDismissed;
 
   const mobileNavItems = [
-    { id: 'my_area', label: 'Perfil', icon: 'smartphone' },
+    { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
     { id: 'schedules', label: 'Escalas', icon: 'calendar-check-2' },
     canManage
       ? { id: 'members', label: 'Equipe', icon: 'users' }
-      : { id: 'roles', label: 'Funções', icon: 'layers' },
+      : { id: 'my_area', label: 'Perfil', icon: 'smartphone' },
     { id: 'attendance', label: 'QR Code', icon: 'qr-code' },
     isDev
       ? { id: 'system_settings', label: 'Config', icon: 'settings' }

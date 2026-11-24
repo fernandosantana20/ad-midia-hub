@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v48-pwa-instalar-celular-responsivo-mobile';
+const CACHE_NAME = 'ad-midia-hub-cache-v49-aba-exclusiva-dashboard-visao-limpa';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
