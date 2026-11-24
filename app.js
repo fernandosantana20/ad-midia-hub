@@ -15,8 +15,50 @@ const STORAGE_KEYS = {
   ACTIVE_MEMBER: 'ad_midia_active_member_v9_qr',
   AUTH_EMAIL: 'ad_midia_auth_email_v9_qr',
   XP_RESET_DONE: 'ad_midia_xp_reset_v9',
-  THEME: 'ad_midia_theme'
+  THEME: 'ad_midia_theme',
+  SYSTEM_CONFIG: 'ad_midia_system_config_v1'
 };
+
+const DEFAULT_SYSTEM_CONFIG = {
+  appName: 'AD MÍDIA HUB',
+  churchName: 'Assembleia de Deus',
+  appSubtitle: 'Gestão de Escalas, Produção & Comunicação',
+  logoDataUrl: '',
+  buttonSize: 'md', // 'sm' | 'md' | 'lg'
+  buttonShape: 'rounded', // 'sharp' | 'rounded' | 'pill'
+  accentColor: 'amber', // 'amber' | 'emerald' | 'sky' | 'indigo' | 'rose' | 'slate'
+  buttonUppercase: false,
+  defaultTheme: 'dark', // 'dark' | 'light'
+  layoutWidth: 'wide', // 'compact' | 'wide' | 'full'
+  cardStyle: 'glass', // 'glass' | 'solid' | 'bordered'
+  cardRadius: 'lg', // 'sm' | 'md' | 'lg'
+  fontScale: 'md', // 'sm' | 'md' | 'lg'
+  showCloudBadge: true,
+  messages: {
+    groupHeader: '🔥 *ESCALA OFICIAL — {APP_NAME}* 🔥',
+    groupFooter: '_Que Deus abençoe nosso ministério e culto!_ 🙌',
+    individualGreeting: '*GRAÇA E PAZ, {NOME}!* 🙏',
+    individualHeader: '📌 *LEMBRETE DE ESCALA — {APP_NAME}*',
+    individualFooter: '_Que Deus abençoe seu ministério! Contamos com sua dedicação e pontualidade._ 🙌',
+    defaultDressCode: 'All Black (Preto Total) + Crachá',
+    customAppUrl: ''
+  }
+};
+
+function mergeSystemConfig(raw) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_SYSTEM_CONFIG));
+  if (!raw || typeof raw !== 'object') return base;
+  const merged = Object.assign({}, base, raw);
+  merged.messages = Object.assign({}, base.messages, (raw.messages && typeof raw.messages === 'object') ? raw.messages : {});
+  return merged;
+}
+
+function getSystemConfig() {
+  if (!state.systemConfig) {
+    state.systemConfig = mergeSystemConfig(null);
+  }
+  return state.systemConfig;
+}
 
 const ROLE_COLOR_THEMES = {
   cyan: 'badge-theme-cyan',
@@ -55,6 +97,7 @@ const state = {
   roles: [],
   members: [],
   schedules: [],
+  systemConfig: mergeSystemConfig(null),
   attendanceReportConfig: {
     scheduleId: 'all_members',
     eventDate: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }).replace('/', '.'),
@@ -108,6 +151,25 @@ function toggleTheme() {
   );
 }
 
+function applySystemConfig() {
+  const cfg = getSystemConfig();
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  if (root && typeof root.setAttribute === 'function') {
+    root.setAttribute('data-btn-size', cfg.buttonSize || 'md');
+    root.setAttribute('data-btn-shape', cfg.buttonShape || 'rounded');
+    root.setAttribute('data-accent', cfg.accentColor || 'amber');
+    root.setAttribute('data-btn-upper', cfg.buttonUppercase ? 'true' : 'false');
+    root.setAttribute('data-layout-width', cfg.layoutWidth || 'wide');
+    root.setAttribute('data-card-style', cfg.cardStyle || 'glass');
+    root.setAttribute('data-card-radius', cfg.cardRadius || 'lg');
+    root.setAttribute('data-font-scale', cfg.fontScale || 'md');
+  }
+  try {
+    document.title = `${cfg.appName || 'AD MÍDIA HUB'} — ${cfg.churchName || 'Assembleia de Deus'}`;
+  } catch (e) {}
+}
+
 // ============================================================================
 // PERMISSÕES E PRIVACIDADE DE ACESSO (RBAC)
 // ============================================================================
@@ -139,6 +201,16 @@ function getEffectiveUser() {
     return logged;
   }
   return logged || active;
+}
+
+function isDeveloperUser(member = getLoggedInUser()) {
+  if (!member) return false;
+  const email = (state.authEmail || member.email || '').toLowerCase().trim();
+  const isFernandoEmail =
+    email === 'fernandosantanaferramentas@gmail.com' ||
+    email === 'fernandobritosantana@gmail.com' ||
+    email === 'fernandobritossantana@gmail.com';
+  return (member.id === 'm1' && member.roleType === 'developer') || (isFernandoEmail && member.roleType === 'developer');
 }
 
 function isPrivilegedUser(member = getEffectiveUser()) {
@@ -178,11 +250,14 @@ function toggleMemberAttendancePermission(memberId) {
 function enforcePrivacyState() {
   const logged = getLoggedInUser();
   if (!logged) return;
+  if (!isDeveloperUser(logged) && state.activeTab === 'system_settings') {
+    state.activeTab = isPrivilegedUser(logged) ? 'schedules' : 'my_area';
+  }
   if (!isPrivilegedUser(logged)) {
     // Voluntário comum: trava no próprio perfil e na visão Equipe
     state.mode = 'team';
     state.activeMemberId = logged.id;
-    if (state.activeTab === 'members' || state.activeTab === 'reports') {
+    if (state.activeTab === 'members' || state.activeTab === 'reports' || state.activeTab === 'system_settings') {
       state.activeTab = 'my_area';
     }
   }
@@ -193,6 +268,10 @@ function enforcePrivacyState() {
 // ============================================================================
 
 function getAppBaseUrl() {
+  const cfg = getSystemConfig();
+  if (cfg.messages && cfg.messages.customAppUrl && cfg.messages.customAppUrl.trim()) {
+    return cfg.messages.customAppUrl.trim().replace(/\/+$/, '');
+  }
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
     if (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')) {
       return window.location.origin;
@@ -237,6 +316,10 @@ async function syncFromCloud(silent = false) {
       if (Array.isArray(cloudData.roles) && cloudData.roles.length > 0) state.roles = cloudData.roles;
       if (Array.isArray(cloudData.members) && cloudData.members.length > 0) state.members = cloudData.members;
       if (Array.isArray(cloudData.schedules)) state.schedules = cloudData.schedules;
+      if (cloudData.systemConfig && typeof cloudData.systemConfig === 'object') {
+        state.systemConfig = mergeSystemConfig(cloudData.systemConfig);
+        applySystemConfig();
+      }
 
       normalizeLoadedState();
       saveLocalCacheOnly();
@@ -259,6 +342,7 @@ async function pushToCloud() {
     roles: state.roles,
     members: state.members,
     schedules: state.schedules,
+    systemConfig: getSystemConfig(),
     updatedAt: new Date().toISOString(),
     updatedBy: logged?.email || 'system'
   };
@@ -494,17 +578,25 @@ function loadData() {
     const savedRoles = localStorage.getItem(STORAGE_KEYS.ROLES);
     const savedMembers = localStorage.getItem(STORAGE_KEYS.MEMBERS);
     const savedSchedules = localStorage.getItem(STORAGE_KEYS.SCHEDULES);
+    const savedSystemConfig = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
 
     state.roles = savedRoles ? JSON.parse(savedRoles) : [...window.MEDIA_ROLES];
     state.members = savedMembers ? JSON.parse(savedMembers) : [...window.INITIAL_MEMBERS];
     state.schedules = savedSchedules ? JSON.parse(savedSchedules) : [...window.INITIAL_SCHEDULES];
+    state.systemConfig = savedSystemConfig ? mergeSystemConfig(JSON.parse(savedSystemConfig)) : mergeSystemConfig(null);
 
+    if (!localStorage.getItem(STORAGE_KEYS.THEME) && state.systemConfig.defaultTheme) {
+      applyTheme(state.systemConfig.defaultTheme);
+    }
+    applySystemConfig();
     normalizeLoadedState();
   } catch (e) {
     console.error('Erro ao carregar dados locais:', e);
     state.roles = [...window.MEDIA_ROLES];
     state.members = [...window.INITIAL_MEMBERS];
     state.schedules = [...window.INITIAL_SCHEDULES];
+    state.systemConfig = mergeSystemConfig(null);
+    applySystemConfig();
   }
 }
 
@@ -513,6 +605,7 @@ function saveLocalCacheOnly() {
   localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(state.roles));
   localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(state.members));
   localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(state.schedules));
+  localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(getSystemConfig()));
   localStorage.setItem(STORAGE_KEYS.MODE, state.mode);
   localStorage.setItem(STORAGE_KEYS.ACTIVE_MEMBER, state.activeMemberId);
   if (state.authEmail) {
@@ -4551,6 +4644,10 @@ function setActiveTab(tab) {
   const logged = getLoggedInUser();
   const effective = getEffectiveUser();
   const canAccess = isPrivilegedUser(logged) || isPrivilegedUser(effective);
+  if (tab === 'system_settings' && !isDeveloperUser(logged)) {
+    showToast('Acesso restrito: painel exclusivo do Desenvolvedor Fernando Santana.', 'rose');
+    return;
+  }
   if (!canAccess && (tab === 'members' || tab === 'reports')) {
     showToast('Privacidade ativa: apenas a liderança pode visualizar esta área.', 'rose');
     return;
@@ -4777,13 +4874,20 @@ function copyScheduleForWhatsApp(scheduleId) {
   const schedule = state.schedules.find(s => s.id === scheduleId);
   if (!schedule) return;
   const d = formatDateBR(schedule.date);
+  const cfg = getSystemConfig();
+  const appName = cfg.appName || 'AD MÍDIA HUB';
+  const msgCfg = cfg.messages || DEFAULT_SYSTEM_CONFIG.messages;
+  const headerText = (msgCfg.groupHeader || DEFAULT_SYSTEM_CONFIG.messages.groupHeader)
+    .replace(/\{APP_NAME\}/g, appName);
+  const footerText = (msgCfg.groupFooter || DEFAULT_SYSTEM_CONFIG.messages.groupFooter)
+    .replace(/\{APP_NAME\}/g, appName);
 
   let lines = [
-    `🔥 *ESCALA OFICIAL — AD MÍDIA HUB* 🔥`,
+    headerText,
     `⛪ *${schedule.title}* (${schedule.category})`,
     `📅 *Data:* ${d.full}/${d.year}`,
     `⏰ *Chegada (Briefing):* ${schedule.callTime} | *Início:* ${schedule.startTime}`,
-    `👕 *Dress Code:* ${schedule.dressCode || 'Padrão Mídia'}`,
+    `👕 *Dress Code:* ${schedule.dressCode || msgCfg.defaultDressCode || 'Padrão Mídia'}`,
     ``
   ];
 
@@ -4806,7 +4910,7 @@ function copyScheduleForWhatsApp(scheduleId) {
   }
 
   lines.push(`📲 *Confirme sua presença no App:* ${getAppBaseUrl()}/`);
-  lines.push(`_Que Deus abençoe nosso ministério e culto!_ 🙌`);
+  lines.push(footerText);
 
   const text = lines.join('\n');
   navigator.clipboard.writeText(text).then(() => {
@@ -4916,19 +5020,31 @@ function sendIndividualWhatsAppReminder(schedId, roleId, memberId) {
 
   const d = formatDateBR(sched.date);
   const dateFormatted = d.full || sched.date;
+  const cfg = getSystemConfig();
+  const appName = cfg.appName || 'AD MÍDIA HUB';
+  const msgCfg = cfg.messages || DEFAULT_SYSTEM_CONFIG.messages;
+  const greetingText = (msgCfg.individualGreeting || DEFAULT_SYSTEM_CONFIG.messages.individualGreeting)
+    .replace(/\{NOME\}/g, member.name.toUpperCase())
+    .replace(/\{APP_NAME\}/g, appName);
+  const headerText = (msgCfg.individualHeader || DEFAULT_SYSTEM_CONFIG.messages.individualHeader)
+    .replace(/\{NOME\}/g, member.name.toUpperCase())
+    .replace(/\{APP_NAME\}/g, appName);
+  const footerText = (msgCfg.individualFooter || DEFAULT_SYSTEM_CONFIG.messages.individualFooter)
+    .replace(/\{NOME\}/g, member.name.toUpperCase())
+    .replace(/\{APP_NAME\}/g, appName);
 
   const msg =
-    `*GRAÇA E PAZ, ${member.name.toUpperCase()}!* 🙏\n\n` +
-    `📌 *LEMBRETE DE ESCALA — AD MÍDIA*\n` +
+    `${greetingText}\n\n` +
+    `${headerText}\n` +
     `⛪ *Culto:* ${sched.title}\n` +
     `📅 *Data:* ${dateFormatted}\n` +
     `⏰ *Horário de Chegada (Call Time):* ${sched.callTime}\n` +
     `🎬 *Início do Culto / Live:* ${sched.startTime}\n` +
     `🎯 *Sua Função:* ${role.shortName} (${role.name})\n` +
     `📍 *Posto de Operação:* ${role.station}\n` +
-    `👔 *Dress Code:* ${sched.dressCode || 'Preto Padrão'}\n\n` +
+    `👔 *Dress Code:* ${sched.dressCode || msgCfg.defaultDressCode || 'Preto Padrão'}\n\n` +
     `📲 *Confirme sua presença no App:* ${getAppBaseUrl()}/\n\n` +
-    `_Que Deus abençoe seu ministério! Contamos com sua dedicação e pontualidade._ 🙌`;
+    `${footerText}`;
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
@@ -4939,12 +5055,13 @@ function openNewScheduleModal() {
   const modal = document.getElementById('modal-schedule');
   if (!modal) return;
   const today = new Date().toISOString().split('T')[0];
+  const cfg = getSystemConfig();
   document.getElementById('sched-title').value = '';
   document.getElementById('sched-category').value = 'Culto de Domingo';
   document.getElementById('sched-date').value = today;
   document.getElementById('sched-call').value = '17:30';
   document.getElementById('sched-start').value = '18:00';
-  document.getElementById('sched-dress').value = 'All Black (Preto Total) + Crachá';
+  document.getElementById('sched-dress').value = (cfg.messages && cfg.messages.defaultDressCode) || 'All Black (Preto Total) + Crachá';
   document.getElementById('sched-notes').value = '';
   const targetInp = document.getElementById('sched-target-volunteers');
   if (targetInp) targetInp.value = '15';
@@ -5884,18 +6001,25 @@ function renderHeader() {
   const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   const canMark = canMarkAttendanceUser(effectiveUser);
   const isDirector = canManage && (state.mode === 'director' || effectiveUser?.roleType === 'leader');
+  const isDev = isDeveloperUser(loggedUser);
+  const cfg = getSystemConfig();
 
   // Calculate global stats
   const totalMembers = state.members.length;
   const totalSchedules = state.schedules.length;
   const swapAlerts = state.schedules.reduce((acc, s) => acc + s.assignments.filter(a => a.status === 'swap_requested').length, 0);
 
-  const cloudBadge =
+  const cloudBadge = !cfg.showCloudBadge ? '' : (
     state.cloudSyncStatus === 'synced'
       ? `<button type="button" onclick="syncFromCloud()" title="Nuvem conectada e sincronizada. Clique para sincronizar agora" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition cursor-pointer active:scale-95"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Nuvem Sincronizada 🔄</button>`
       : state.cloudSyncStatus === 'syncing'
       ? `<span class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 animate-pulse">Sincronizando Nuvem...</span>`
-      : `<button type="button" onclick="syncFromCloud()" title="Clique para sincronizar com a nuvem agora" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition cursor-pointer active:scale-95">Sincronizar Nuvem 🔄</button>`;
+      : `<button type="button" onclick="syncFromCloud()" title="Clique para sincronizar com a nuvem agora" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition cursor-pointer active:scale-95">Sincronizar Nuvem 🔄</button>`
+  );
+
+  const brandLogoHtml = cfg.logoDataUrl
+    ? `<img src="${escapeHTML(cfg.logoDataUrl)}" alt="${escapeHTML(cfg.appName)}" class="w-full h-full object-contain rounded-xl p-0.5" />`
+    : `<i data-lucide="flame" class="w-6 h-6 text-amber-400"></i>`;
 
   return `
     <header class="sticky top-0 z-30 border-b backdrop-blur-md shadow-md">
@@ -5904,21 +6028,23 @@ function renderHeader() {
         <!-- Brand Identity -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3.5">
-            <div class="relative w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm">
-              <i data-lucide="flame" class="w-6 h-6 text-amber-400"></i>
+            <div class="relative w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm overflow-visible">
+              ${brandLogoHtml}
               <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[var(--bg-deep)]"></span>
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight text-amber-500 dark:text-amber-400">
-                  AD MÍDIA HUB
+                  ${escapeHTML(cfg.appName || 'AD MÍDIA HUB')}
                 </span>
-                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full badge-theme-amber">
-                  Assembleia de Deus
-                </span>
+                ${cfg.churchName ? `
+                  <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full badge-theme-amber">
+                    ${escapeHTML(cfg.churchName)}
+                  </span>
+                ` : ''}
                 ${cloudBadge}
               </div>
-              <p class="text-xs text-slate-400">Gestão de Escalas, Produção & Comunicação</p>
+              <p class="text-xs text-slate-400">${escapeHTML(cfg.appSubtitle || 'Gestão de Escalas, Produção & Comunicação')}</p>
             </div>
           </div>
 
@@ -6136,6 +6262,20 @@ function renderHeader() {
               <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
               <span>Destaques & Equipe</span>
             </button>
+
+            ${isDev ? `
+              <button
+                onclick="setActiveTab('system_settings')"
+                title="Painel Exclusivo do Desenvolvedor Fernando Santana"
+                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition shrink-0 ${
+                  state.activeTab === 'system_settings'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-amber-300/90 hover:text-amber-200 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
+                }">
+                <i data-lucide="settings" class="w-4 h-4"></i>
+                <span>Config. Sistema (Dev)</span>
+              </button>
+            ` : ''}
           </nav>
 
           <div class="flex items-center gap-2 py-1 shrink-0 ml-auto flex-wrap">
@@ -8499,19 +8639,26 @@ function renderAttendanceTab() {
 // ============================================================================
 
 function renderGmailLoginScreen() {
+  const cfg = getSystemConfig();
+  const loginLogoHtml = cfg.logoDataUrl
+    ? `<img src="${escapeHTML(cfg.logoDataUrl)}" alt="${escapeHTML(cfg.appName)}" class="w-12 h-12 object-contain rounded-xl" />`
+    : `<i data-lucide="flame" class="w-8 h-8 text-amber-400"></i>`;
+
   return `
     <div class="min-h-screen flex items-center justify-center p-4">
       <div class="glass-panel rounded-3xl max-w-md w-full p-7 sm:p-8 border border-cyan-500/35 space-y-6 animate-view relative overflow-hidden">
         <div class="absolute -right-12 -top-12 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="text-center space-y-2">
-          <div class="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
-            <i data-lucide="flame" class="w-8 h-8 text-amber-400"></i>
+          <div class="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 overflow-hidden p-1">
+            ${loginLogoHtml}
           </div>
-          <span class="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
-            Assembleia de Deus
-          </span>
-          <h1 class="text-2xl font-display font-extrabold text-white">AD MÍDIA HUB</h1>
+          ${cfg.churchName ? `
+            <span class="inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              ${escapeHTML(cfg.churchName)}
+            </span>
+          ` : ''}
+          <h1 class="text-2xl font-display font-extrabold text-white">${escapeHTML(cfg.appName || 'AD MÍDIA HUB')}</h1>
           <p class="text-xs text-slate-400">
             Conectado ao <strong>Banco de Dados em Nuvem</strong>. Entre com seu Gmail ou faça seu cadastro inicial na equipe.
           </p>
@@ -8714,6 +8861,944 @@ function renderReportsAndCanteenTab() {
 }
 
 // ============================================================================
+// ABA 8: PAINEL DE CONFIGURAÇÕES DO SISTEMA (EXCLUSIVO DESENVOLVEDOR FERNANDO SANTANA)
+// ============================================================================
+
+function guardDeveloperAction() {
+  if (!isDeveloperUser(getLoggedInUser())) {
+    showToast('Acesso restrito: apenas o Desenvolvedor Fernando Santana pode alterar configurações do sistema.', 'rose');
+    return false;
+  }
+  return true;
+}
+
+function updateSystemConfigOption(field, value, labelMsg = '') {
+  if (!guardDeveloperAction()) return;
+  const cfg = getSystemConfig();
+  cfg[field] = value;
+  if (field === 'defaultTheme') {
+    applyTheme(value);
+  }
+  applySystemConfig();
+  saveData();
+  renderApp();
+  if (labelMsg) {
+    showToast(labelMsg, 'emerald');
+  }
+}
+
+function handleSaveSystemBranding(event) {
+  if (event) event.preventDefault();
+  if (!guardDeveloperAction()) return;
+  const cfg = getSystemConfig();
+  const appNameEl = document.getElementById('dev-cfg-app-name');
+  const churchEl = document.getElementById('dev-cfg-church-name');
+  const subtitleEl = document.getElementById('dev-cfg-subtitle');
+  const logoUrlEl = document.getElementById('dev-cfg-logo-url');
+
+  if (appNameEl) cfg.appName = (appNameEl.value || '').trim() || 'AD MÍDIA HUB';
+  if (churchEl) cfg.churchName = (churchEl.value || '').trim();
+  if (subtitleEl) cfg.appSubtitle = (subtitleEl.value || '').trim() || 'Gestão de Escalas, Produção & Comunicação';
+  if (logoUrlEl && logoUrlEl.value.trim()) {
+    cfg.logoDataUrl = logoUrlEl.value.trim();
+  }
+
+  applySystemConfig();
+  saveData();
+  renderApp();
+  showToast('✅ Identidade, nome e logo do sistema salvos e sincronizados na nuvem!', 'emerald');
+}
+
+function handleUploadSystemLogo(event) {
+  if (!guardDeveloperAction()) return;
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('Selecione um arquivo de imagem válido (PNG, JPG, WebP ou SVG).', 'rose');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const rawDataUrl = e.target.result;
+    // Se for SVG pequeno, salva diretamente; caso contrário redimensiona via Canvas preservando transparência
+    if (file.type === 'image/svg+xml' && rawDataUrl.length < 40000) {
+      const cfg = getSystemConfig();
+      cfg.logoDataUrl = rawDataUrl;
+      applySystemConfig();
+      saveData();
+      renderApp();
+      showToast('✅ Logo SVG carregada e sincronizada com sucesso!', 'emerald');
+      return;
+    }
+
+    const img = new Image();
+    img.onload = function() {
+      const maxDim = 240;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/png');
+      const cfg = getSystemConfig();
+      cfg.logoDataUrl = compressed;
+      applySystemConfig();
+      saveData();
+      renderApp();
+      showToast('✅ Logo da plataforma atualizada e sincronizada na nuvem!', 'emerald');
+    };
+    img.onerror = function() {
+      showToast('Não foi possível processar esta imagem de logo.', 'rose');
+    };
+    img.src = rawDataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeSystemLogo() {
+  if (!guardDeveloperAction()) return;
+  const cfg = getSystemConfig();
+  cfg.logoDataUrl = '';
+  applySystemConfig();
+  saveData();
+  renderApp();
+  showToast('Logo removida. Ícone padrão restaurado.', 'amber');
+}
+
+function handleSaveSystemMessages(event) {
+  if (event) event.preventDefault();
+  if (!guardDeveloperAction()) return;
+  const cfg = getSystemConfig();
+  if (!cfg.messages) cfg.messages = Object.assign({}, DEFAULT_SYSTEM_CONFIG.messages);
+
+  const gHeader = document.getElementById('dev-msg-group-header');
+  const gFooter = document.getElementById('dev-msg-group-footer');
+  const iGreet = document.getElementById('dev-msg-ind-greeting');
+  const iHeader = document.getElementById('dev-msg-ind-header');
+  const iFooter = document.getElementById('dev-msg-ind-footer');
+  const dress = document.getElementById('dev-msg-dress-code');
+  const appUrl = document.getElementById('dev-msg-custom-url');
+
+  if (gHeader) cfg.messages.groupHeader = gHeader.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.groupHeader;
+  if (gFooter) cfg.messages.groupFooter = gFooter.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.groupFooter;
+  if (iGreet) cfg.messages.individualGreeting = iGreet.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.individualGreeting;
+  if (iHeader) cfg.messages.individualHeader = iHeader.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.individualHeader;
+  if (iFooter) cfg.messages.individualFooter = iFooter.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.individualFooter;
+  if (dress) cfg.messages.defaultDressCode = dress.value.trim() || DEFAULT_SYSTEM_CONFIG.messages.defaultDressCode;
+  if (appUrl) cfg.messages.customAppUrl = appUrl.value.trim();
+
+  saveData();
+  renderApp();
+  showToast('✅ Modelos de mensagens do WhatsApp salvos e sincronizados!', 'emerald');
+}
+
+function updateLiveDevMessagePreview() {
+  const box = document.getElementById('dev-msg-live-preview');
+  if (!box) return;
+  const cfg = getSystemConfig();
+  const appName = (document.getElementById('dev-cfg-app-name')?.value || cfg.appName || 'AD MÍDIA HUB').trim();
+  const iGreet = (document.getElementById('dev-msg-ind-greeting')?.value || cfg.messages.individualGreeting)
+    .replace(/\{NOME\}/g, 'FERNANDO SANTANA')
+    .replace(/\{APP_NAME\}/g, appName);
+  const iHeader = (document.getElementById('dev-msg-ind-header')?.value || cfg.messages.individualHeader)
+    .replace(/\{NOME\}/g, 'FERNANDO SANTANA')
+    .replace(/\{APP_NAME\}/g, appName);
+  const iFooter = (document.getElementById('dev-msg-ind-footer')?.value || cfg.messages.individualFooter)
+    .replace(/\{NOME\}/g, 'FERNANDO SANTANA')
+    .replace(/\{APP_NAME\}/g, appName);
+  const dress = (document.getElementById('dev-msg-dress-code')?.value || cfg.messages.defaultDressCode || 'All Black').trim();
+  const customUrl = (document.getElementById('dev-msg-custom-url')?.value || '').trim().replace(/\/+$/, '');
+  const baseUrl = customUrl || 'https://ad-midia-hub.vercel.app';
+
+  const previewText =
+    `${iGreet}\n\n` +
+    `${iHeader}\n` +
+    `⛪ *Culto:* Culto da Família & Celebração\n` +
+    `📅 *Data:* Domingo, 29 de Nov\n` +
+    `⏰ *Horário de Chegada:* 17:15 | *Início:* 18:00\n` +
+    `🎯 *Sua Função:* Projeção & Telão\n` +
+    `👔 *Dress Code:* ${dress}\n\n` +
+    `📲 *Confirme sua presença no App:* ${baseUrl}/\n\n` +
+    `${iFooter}`;
+
+  box.textContent = previewText;
+}
+
+function applyLayoutPreset(presetKey) {
+  if (!guardDeveloperAction()) return;
+  const presets = {
+    ministerial: {
+      name: 'Ministerial Âmbar (Padrão)',
+      accentColor: 'amber',
+      buttonSize: 'md',
+      buttonShape: 'rounded',
+      buttonUppercase: false,
+      layoutWidth: 'wide',
+      cardStyle: 'glass',
+      cardRadius: 'lg',
+      fontScale: 'md'
+    },
+    corporativo: {
+      name: 'Corporativo Azul Celeste',
+      accentColor: 'sky',
+      buttonSize: 'md',
+      buttonShape: 'sharp',
+      buttonUppercase: false,
+      layoutWidth: 'wide',
+      cardStyle: 'solid',
+      cardRadius: 'md',
+      fontScale: 'md'
+    },
+    esmeralda: {
+      name: 'Moderno Esmeralda Pílula',
+      accentColor: 'emerald',
+      buttonSize: 'lg',
+      buttonShape: 'pill',
+      buttonUppercase: false,
+      layoutWidth: 'full',
+      cardStyle: 'glass',
+      cardRadius: 'lg',
+      fontScale: 'md'
+    },
+    editorial: {
+      name: 'Editorial Minimalista Compacto',
+      accentColor: 'slate',
+      buttonSize: 'sm',
+      buttonShape: 'sharp',
+      buttonUppercase: true,
+      layoutWidth: 'compact',
+      cardStyle: 'bordered',
+      cardRadius: 'sm',
+      fontScale: 'sm'
+    }
+  };
+
+  const preset = presets[presetKey];
+  if (!preset) return;
+  const cfg = getSystemConfig();
+  Object.assign(cfg, {
+    accentColor: preset.accentColor,
+    buttonSize: preset.buttonSize,
+    buttonShape: preset.buttonShape,
+    buttonUppercase: preset.buttonUppercase,
+    layoutWidth: preset.layoutWidth,
+    cardStyle: preset.cardStyle,
+    cardRadius: preset.cardRadius,
+    fontScale: preset.fontScale
+  });
+
+  applySystemConfig();
+  saveData();
+  renderApp();
+  showToast(`🎨 Preset "${preset.name}" aplicado em toda a plataforma!`, 'emerald');
+}
+
+function exportPlatformLayoutJSON() {
+  if (!guardDeveloperAction()) return;
+  const cfg = getSystemConfig();
+  const payload = {
+    type: 'ad_midia_hub_layout_config',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    exportedBy: 'Fernando Santana (Desenvolvedor)',
+    systemConfig: cfg
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (cfg.appName || 'ad-midia-hub').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  a.href = url;
+  a.download = `${slug}-layout-config.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('📦 Arquivo de Layout & Configurações (.json) exportado!', 'emerald');
+}
+
+function triggerImportPlatformLayout() {
+  if (!guardDeveloperAction()) return;
+  const input = document.getElementById('dev-import-layout-file');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
+}
+
+function handleImportPlatformLayoutFile(event) {
+  if (!guardDeveloperAction()) return;
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      let importedCfg = null;
+      if (parsed && parsed.systemConfig && typeof parsed.systemConfig === 'object') {
+        importedCfg = parsed.systemConfig;
+      } else if (parsed && (parsed.appName || parsed.buttonSize || parsed.layoutWidth || parsed.accentColor || parsed.messages)) {
+        importedCfg = parsed;
+      }
+      if (!importedCfg) {
+        showToast('Arquivo JSON inválido: nenhuma configuração de layout encontrada.', 'rose');
+        return;
+      }
+      state.systemConfig = mergeSystemConfig(importedCfg);
+      if (state.systemConfig.defaultTheme) {
+        applyTheme(state.systemConfig.defaultTheme);
+      }
+      applySystemConfig();
+      saveData();
+      renderApp();
+      showToast('🚀 Layout da plataforma importado, aplicado e sincronizado com a nuvem!', 'emerald');
+    } catch (err) {
+      console.error('Erro ao importar layout JSON:', err);
+      showToast('Erro ao ler o arquivo JSON de layout. Verifique a formatação.', 'rose');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetSystemConfigToFactory() {
+  if (!guardDeveloperAction()) return;
+  if (!confirm('Restaurar todas as configurações de marca, logo, botões, layout e mensagens para o padrão original de fábrica?')) {
+    return;
+  }
+  state.systemConfig = mergeSystemConfig(null);
+  applyTheme('dark');
+  applySystemConfig();
+  saveData();
+  renderApp();
+  showToast('🔄 Configurações do sistema restauradas ao padrão de fábrica.', 'amber');
+}
+
+function renderSystemSettingsTab() {
+  if (!isDeveloperUser(getLoggedInUser())) {
+    return `
+      <div class="glass-panel rounded-3xl p-8 text-center border border-rose-500/30 space-y-3 animate-view">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+          <i data-lucide="shield-alert" class="w-7 h-7"></i>
+        </div>
+        <h2 class="text-xl font-display font-extrabold text-white">Área Restrita ao Desenvolvedor</h2>
+        <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+          Este painel de configurações globais da plataforma é exclusivo do desenvolvedor <strong>Fernando Santana</strong>.
+        </p>
+      </div>
+    `;
+  }
+
+  const cfg = getSystemConfig();
+  const msg = cfg.messages || DEFAULT_SYSTEM_CONFIG.messages;
+
+  const accents = [
+    { key: 'amber', label: 'Âmbar Nobre', swatch: '#f59e0b' },
+    { key: 'emerald', label: 'Esmeralda', swatch: '#10b981' },
+    { key: 'sky', label: 'Azul Celeste', swatch: '#0ea5e9' },
+    { key: 'indigo', label: 'Índigo', swatch: '#6366f1' },
+    { key: 'rose', label: 'Carmim', swatch: '#f43f5e' },
+    { key: 'slate', label: 'Ardósia', swatch: '#475569' }
+  ];
+
+  const previewSampleMsg =
+    `${(msg.individualGreeting || '').replace(/\{NOME\}/g, 'FERNANDO SANTANA').replace(/\{APP_NAME\}/g, cfg.appName)}\n\n` +
+    `${(msg.individualHeader || '').replace(/\{NOME\}/g, 'FERNANDO SANTANA').replace(/\{APP_NAME\}/g, cfg.appName)}\n` +
+    `⛪ *Culto:* Culto da Família & Celebração\n` +
+    `📅 *Data:* Domingo, 29 de Nov\n` +
+    `⏰ *Horário de Chegada:* 17:15 | *Início:* 18:00\n` +
+    `🎯 *Sua Função:* Projeção & Telão\n` +
+    `👔 *Dress Code:* ${msg.defaultDressCode || 'All Black'}\n\n` +
+    `📲 *Confirme sua presença no App:* ${getAppBaseUrl()}/\n\n` +
+    `${(msg.individualFooter || '').replace(/\{NOME\}/g, 'FERNANDO SANTANA').replace(/\{APP_NAME\}/g, cfg.appName)}`;
+
+  return `
+    <div class="space-y-6 animate-view">
+      <input
+        id="dev-import-layout-file"
+        type="file"
+        accept=".json,application/json"
+        class="hidden"
+        onchange="handleImportPlatformLayoutFile(event)" />
+
+      <!-- Banner Exclusivo do Desenvolvedor -->
+      <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/40 relative overflow-hidden">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="flex items-start gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-amber-400 shrink-0">
+              <i data-lucide="sliders-horizontal" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider badge-theme-amber">
+                  Exclusivo Desenvolvedor • Fernando Santana
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase badge-theme-emerald">
+                  Sincronização em Nuvem Ativa
+                </span>
+              </div>
+              <h1 class="text-xl sm:text-2xl font-display font-extrabold text-white">
+                Painel de Configurações Globais do Sistema
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">
+                Personalize nome, logo, botões, tamanhos, layout, presets, mensagens automáticas do WhatsApp e importe/exporte configurações completas da plataforma.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onclick="triggerImportPlatformLayout()"
+              class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm transition">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              <span>Importar Layout (.json)</span>
+            </button>
+            <button
+              type="button"
+              onclick="exportPlatformLayoutJSON()"
+              class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-bold text-xs transition">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Exportar Layout</span>
+            </button>
+            <button
+              type="button"
+              onclick="resetSystemConfigToFactory()"
+              class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/35 font-bold text-xs transition">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              <span>Padrão de Fábrica</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grade Principal: 2 Colunas -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        <!-- 1. IDENTIDADE DO SISTEMA & LOGO -->
+        <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <i data-lucide="badge-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-display font-extrabold text-white">1. Nome do Sistema & Logotipo</h2>
+              <p class="text-[11px] text-slate-400">Altere o nome oficial, subtítulo e carregue a logo da igreja ou ministério</p>
+            </div>
+          </div>
+
+          <form onsubmit="handleSaveSystemBranding(event)" class="space-y-4">
+            <!-- Upload / Preview da Logo -->
+            <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+              <div class="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                ${cfg.logoDataUrl
+                  ? `<img src="${escapeHTML(cfg.logoDataUrl)}" alt="Logo" class="w-full h-full object-contain rounded-xl" />`
+                  : `<i data-lucide="flame" class="w-9 h-9 text-amber-400"></i>`}
+              </div>
+              <div class="flex-1 text-center sm:text-left space-y-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-amber-300">Logotipo da Plataforma</div>
+                <p class="text-[11px] text-slate-400">
+                  Envie uma imagem PNG (fundo transparente recomendado), JPG ou SVG. Redimensionada automaticamente para máxima velocidade.
+                </p>
+                <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition">
+                    <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                    <span>Enviar Logo</span>
+                    <input type="file" accept="image/*" class="hidden" onchange="handleUploadSystemLogo(event)" />
+                  </label>
+                  ${cfg.logoDataUrl ? `
+                    <button
+                      type="button"
+                      onclick="removeSystemLogo()"
+                      class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-bold transition">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                      <span>Remover Logo</span>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Nome do Sistema *
+                </label>
+                <input
+                  id="dev-cfg-app-name"
+                  type="text"
+                  required
+                  value="${escapeHTML(cfg.appName || '')}"
+                  oninput="updateLiveDevMessagePreview()"
+                  placeholder="Ex: AD MÍDIA HUB"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Selo / Nome da Igreja
+                </label>
+                <input
+                  id="dev-cfg-church-name"
+                  type="text"
+                  value="${escapeHTML(cfg.churchName || '')}"
+                  placeholder="Ex: Assembleia de Deus"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                Subtítulo no Cabeçalho
+              </label>
+              <input
+                id="dev-cfg-subtitle"
+                type="text"
+                value="${escapeHTML(cfg.appSubtitle || '')}"
+                placeholder="Ex: Gestão de Escalas, Produção & Comunicação"
+                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                Ou URL Externa da Logo (Opcional)
+              </label>
+              <input
+                id="dev-cfg-logo-url"
+                type="url"
+                value="${cfg.logoDataUrl && cfg.logoDataUrl.startsWith('http') ? escapeHTML(cfg.logoDataUrl) : ''}"
+                placeholder="https://exemplo.com/sua-logo.png"
+                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+            </div>
+
+            <div class="flex justify-end pt-1">
+              <button
+                type="submit"
+                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Salvar Nome & Marca</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 2. CONFIGURAÇÃO DE BOTÕES & TAMANHOS -->
+        <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <i data-lucide="mouse-pointer-click" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-display font-extrabold text-white">2. Configuração de Botões & Tamanhos</h2>
+              <p class="text-[11px] text-slate-400">Defina tamanho, formato, cor principal e estilo de todos os botões do sistema</p>
+            </div>
+          </div>
+
+          <!-- Tamanho dos Botões -->
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              Tamanho Global dos Botões
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+              ${[
+                { k: 'sm', title: 'Compacto', desc: 'Mais itens na tela' },
+                { k: 'md', title: 'Padrão', desc: 'Equilíbrio ideal' },
+                { k: 'lg', title: 'Grande', desc: 'Toque confortável' }
+              ].map(opt => `
+                <button
+                  type="button"
+                  onclick="updateSystemConfigOption('buttonSize', '${opt.k}', 'Tamanho dos botões alterado para ${opt.title}!')"
+                  class="no-btn-scale p-3 rounded-xl border text-left transition ${
+                    cfg.buttonSize === opt.k
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-300'
+                      : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'
+                  }">
+                  <div class="text-xs font-extrabold">${opt.title}</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">${opt.desc}</div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Formato dos Botões -->
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              Formato / Arredondamento dos Botões
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+              ${[
+                { k: 'sharp', title: 'Quadrado Suave', previewCls: 'rounded-md' },
+                { k: 'rounded', title: 'Arredondado', previewCls: 'rounded-xl' },
+                { k: 'pill', title: 'Pílula Total', previewCls: 'rounded-full' }
+              ].map(opt => `
+                <button
+                  type="button"
+                  onclick="updateSystemConfigOption('buttonShape', '${opt.k}', 'Formato dos botões alterado para ${opt.title}!')"
+                  class="no-btn-scale no-btn-shape p-3 ${opt.previewCls} border text-center transition ${
+                    cfg.buttonShape === opt.k
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-300 font-extrabold'
+                      : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600 font-semibold'
+                  } text-xs">
+                  ${opt.title}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Cor Principal de Destaque -->
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              Cor Principal dos Botões & Destaques
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              ${accents.map(ac => `
+                <button
+                  type="button"
+                  onclick="updateSystemConfigOption('accentColor', '${ac.key}', 'Cor principal alterada para ${ac.label}!')"
+                  class="no-btn-scale flex items-center gap-2.5 p-2.5 rounded-xl border transition ${
+                    cfg.accentColor === ac.key
+                      ? 'bg-slate-800 border-amber-500 text-white font-bold'
+                      : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'
+                  } text-xs">
+                  <span class="w-4 h-4 rounded-full shrink-0 border border-white/20" style="background:${ac.swatch}"></span>
+                  <span class="truncate">${ac.label}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Toggle Caixa Alta -->
+          <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800">
+            <div>
+              <div class="text-xs font-bold text-white">Texto em Caixa Alta nos Botões</div>
+              <div class="text-[11px] text-slate-400">Exibe rótulos de botões em MAIÚSCULAS</div>
+            </div>
+            <button
+              type="button"
+              onclick="updateSystemConfigOption('buttonUppercase', ${!cfg.buttonUppercase}, 'Estilo de texto dos botões atualizado!')"
+              class="no-btn-scale px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                cfg.buttonUppercase
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700'
+              }">
+              ${cfg.buttonUppercase ? 'ATIVADO' : 'Desativado'}
+            </button>
+          </div>
+
+          <!-- Preview Ao Vivo dos Botões -->
+          <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2.5">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pré-visualização ao vivo</span>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" class="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-sm">
+                Botão Principal
+              </button>
+              <button type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm">
+                Confirmar Ação
+              </button>
+              <button type="button" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs">
+                Botão Secundário
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. LAYOUT DA PLATAFORMA & PRESETS / IMPORTAÇÃO -->
+        <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+              <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-display font-extrabold text-white">3. Layout da Plataforma & Presets</h2>
+              <p class="text-[11px] text-slate-400">Controle largura, estilo de cartões, tipografia, tema padrão e importe layouts prontos</p>
+            </div>
+          </div>
+
+          <!-- Tema Padrão & Largura -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Tema Padrão</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onclick="updateSystemConfigOption('defaultTheme', 'dark', 'Tema padrão definido para Modo Escuro!')"
+                  class="no-btn-scale py-2.5 px-3 rounded-xl border text-xs font-bold transition ${
+                    cfg.defaultTheme === 'dark' ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                  }">
+                  🌙 Escuro
+                </button>
+                <button
+                  type="button"
+                  onclick="updateSystemConfigOption('defaultTheme', 'light', 'Tema padrão definido para Modo Claro!')"
+                  class="no-btn-scale py-2.5 px-3 rounded-xl border text-xs font-bold transition ${
+                    cfg.defaultTheme === 'light' ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                  }">
+                  ☀️ Claro
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Largura da Tela (Desktop)</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                ${[
+                  { k: 'compact', l: 'Compacto' },
+                  { k: 'wide', l: 'Amplo' },
+                  { k: 'full', l: 'Tela Cheia' }
+                ].map(opt => `
+                  <button
+                    type="button"
+                    onclick="updateSystemConfigOption('layoutWidth', '${opt.k}', 'Largura do layout alterada para ${opt.l}!')"
+                    class="no-btn-scale py-2.5 px-2 rounded-xl border text-[11px] font-bold transition ${
+                      cfg.layoutWidth === opt.k ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                    }">
+                    ${opt.l}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Estilo dos Cards & Arredondamento -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Estilo dos Painéis / Cards</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                ${[
+                  { k: 'glass', l: 'Vidro' },
+                  { k: 'solid', l: 'Sólido' },
+                  { k: 'bordered', l: 'Borda' }
+                ].map(opt => `
+                  <button
+                    type="button"
+                    onclick="updateSystemConfigOption('cardStyle', '${opt.k}', 'Estilo dos cards alterado para ${opt.l}!')"
+                    class="no-btn-scale py-2.5 px-2 rounded-xl border text-[11px] font-bold transition ${
+                      cfg.cardStyle === opt.k ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                    }">
+                    ${opt.l}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Cantos dos Cards</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                ${[
+                  { k: 'sm', l: 'Reto' },
+                  { k: 'md', l: 'Médio' },
+                  { k: 'lg', l: 'Suave' }
+                ].map(opt => `
+                  <button
+                    type="button"
+                    onclick="updateSystemConfigOption('cardRadius', '${opt.k}', 'Arredondamento dos cards atualizado!')"
+                    class="no-btn-scale py-2.5 px-2 rounded-xl border text-[11px] font-bold transition ${
+                      cfg.cardRadius === opt.k ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                    }">
+                    ${opt.l}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Escala de Fonte & Selo Nuvem -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Tamanho da Fonte</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                ${[
+                  { k: 'sm', l: 'Pequena' },
+                  { k: 'md', l: 'Normal' },
+                  { k: 'lg', l: 'Grande' }
+                ].map(opt => `
+                  <button
+                    type="button"
+                    onclick="updateSystemConfigOption('fontScale', '${opt.k}', 'Escala de fonte alterada para ${opt.l}!')"
+                    class="no-btn-scale py-2 px-2 rounded-xl border text-[11px] font-bold transition ${
+                      cfg.fontScale === opt.k ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                    }">
+                    ${opt.l}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">Selo de Nuvem no Topo</label>
+              <button
+                type="button"
+                onclick="updateSystemConfigOption('showCloudBadge', ${!cfg.showCloudBadge}, 'Visibilidade do selo de nuvem atualizada!')"
+                class="no-btn-scale w-full py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                  cfg.showCloudBadge ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-slate-900/70 border-slate-800 text-slate-400'
+                }">
+                ${cfg.showCloudBadge ? '✓ Visível no Cabeçalho' : '✕ Oculto no Cabeçalho'}
+              </button>
+            </div>
+          </div>
+
+          <!-- Presets Prontos de Layout -->
+          <div class="space-y-2.5 pt-2 border-t border-slate-800">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-amber-300">
+              Presets Prontos de Layout da Plataforma (1 Clique)
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button type="button" onclick="applyLayoutPreset('ministerial')" class="no-btn-scale p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800 border border-slate-800 text-left transition">
+                <div class="text-xs font-extrabold text-amber-300">✨ Ministerial Âmbar</div>
+                <div class="text-[10px] text-slate-400">Vidro translúcido, botões padrão, amplo</div>
+              </button>
+              <button type="button" onclick="applyLayoutPreset('corporativo')" class="no-btn-scale p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800 border border-slate-800 text-left transition">
+                <div class="text-xs font-extrabold text-sky-300">💼 Corporativo Celeste</div>
+                <div class="text-[10px] text-slate-400">Cards sólidos, botões quadrados suaves</div>
+              </button>
+              <button type="button" onclick="applyLayoutPreset('esmeralda')" class="no-btn-scale p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800 border border-slate-800 text-left transition">
+                <div class="text-xs font-extrabold text-emerald-300">🌿 Esmeralda Tela Cheia</div>
+                <div class="text-[10px] text-slate-400">Botões grandes em pílula, largura 100%</div>
+              </button>
+              <button type="button" onclick="applyLayoutPreset('editorial')" class="no-btn-scale p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800 border border-slate-800 text-left transition">
+                <div class="text-xs font-extrabold text-slate-200">📐 Editorial Compacto</div>
+                <div class="text-[10px] text-slate-400">Minimalista com borda, botões compactos</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. CONFIGURAÇÃO DE MENSAGENS (WHATSAPP & CONFIRMAÇÃO) -->
+        <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <i data-lucide="message-square-text" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-display font-extrabold text-white">4. Configuração de Mensagens (WhatsApp)</h2>
+              <p class="text-[11px] text-slate-400">Personalize os textos enviados ao grupo e no lembrete individual. Use <code class="px-1 rounded">{NOME}</code> e <code class="px-1 rounded">{APP_NAME}</code>.</p>
+            </div>
+          </div>
+
+          <form onsubmit="handleSaveSystemMessages(event)" class="space-y-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Saudação Individual ({NOME})
+                </label>
+                <input
+                  id="dev-msg-ind-greeting"
+                  type="text"
+                  value="${escapeHTML(msg.individualGreeting || '')}"
+                  oninput="updateLiveDevMessagePreview()"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Título Lembrete Individual ({APP_NAME})
+                </label>
+                <input
+                  id="dev-msg-ind-header"
+                  type="text"
+                  value="${escapeHTML(msg.individualHeader || '')}"
+                  oninput="updateLiveDevMessagePreview()"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                Rodapé do Lembrete Individual
+              </label>
+              <input
+                id="dev-msg-ind-footer"
+                type="text"
+                value="${escapeHTML(msg.individualFooter || '')}"
+                oninput="updateLiveDevMessagePreview()"
+                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Cabeçalho da Escala no Grupo
+                </label>
+                <input
+                  id="dev-msg-group-header"
+                  type="text"
+                  value="${escapeHTML(msg.groupHeader || '')}"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Rodapé da Escala no Grupo
+                </label>
+                <input
+                  id="dev-msg-group-footer"
+                  type="text"
+                  value="${escapeHTML(msg.groupFooter || '')}"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Dress Code Padrão
+                </label>
+                <input
+                  id="dev-msg-dress-code"
+                  type="text"
+                  value="${escapeHTML(msg.defaultDressCode || '')}"
+                  oninput="updateLiveDevMessagePreview()"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Link do App nas Mensagens (Opcional)
+                </label>
+                <input
+                  id="dev-msg-custom-url"
+                  type="url"
+                  value="${escapeHTML(msg.customAppUrl || '')}"
+                  oninput="updateLiveDevMessagePreview()"
+                  placeholder="https://ad-midia-hub.vercel.app"
+                  class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+
+            <!-- Preview WhatsApp -->
+            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-1.5">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                Pré-visualização do Lembrete WhatsApp
+              </span>
+              <pre id="dev-msg-live-preview" class="text-[11px] text-slate-200 whitespace-pre-wrap font-sans leading-relaxed">${escapeHTML(previewSampleMsg)}</pre>
+            </div>
+
+            <div class="flex justify-end pt-1">
+              <button
+                type="submit"
+                class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Salvar Mensagens & Sincronizar</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
 // RENDERIZAÇÃO PRINCIPAL
 // ============================================================================
 
@@ -8722,6 +9807,7 @@ function renderApp() {
   if (!root) return;
 
   enforcePrivacyState();
+  applySystemConfig();
 
   if (!state.authEmail || !getLoggedInUser()) {
     root.innerHTML = renderGmailLoginScreen();
@@ -8744,6 +9830,8 @@ function renderApp() {
     mainContent = renderReportsAndCanteenTab();
   } else if (state.activeTab === 'ranking') {
     mainContent = renderRankingTab();
+  } else if (state.activeTab === 'system_settings') {
+    mainContent = renderSystemSettingsTab();
   }
 
   const effectiveUser = getEffectiveUser();

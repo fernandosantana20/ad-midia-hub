@@ -493,3 +493,138 @@ button:active {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ==========================================================================
+   CONFIGURAÇÕES DINÂMICAS DO DESENVOLVEDOR (BOTÕES, LAYOUT, CORES & TIPOGRAFIA)
+   ========================================================================== */
+
+/* Escala de Tipografia Global */
+html[data-font-scale="sm"] { font-size: 15px; }
+html[data-font-scale="md"] { font-size: 16px; }
+html[data-font-scale="lg"] { font-size: 17px; }
+
+/* Largura do Layout da Plataforma */
+html[data-layout-width="compact"] .app-screen-container {
+  max-width: 1280px !important;
+}
+html[data-layout-width="wide"] .app-screen-container {
+  max-width: 1720px !important;
+}
+html[data-layout-width="full"] .app-screen-container {
+  max-width: 100% !important;
+}
+
+/* Estilo dos Cards */
+html[data-card-style="solid"] .glass-panel {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-card-solid) !important;
+}
+html[data-card-style="bordered"] .glass-panel {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-card-solid) !important;
+  border-width: 1.5px !important;
+  box-shadow: none !important;
+}
+
+/* Raio de Borda dos Cards */
+html[data-card-radius="sm"] .glass-panel { border-radius: 0.75rem !important; }
+html[data-card-radius="md"] .glass-panel { border-radius: 1.125rem !important; }
+html[data-card-radius="lg"] .glass-panel { border-radius: 1.5rem !important; }
+
+/* Tamanho dos Botões (Compacto / Padrão / Grande) */
+html[data-btn-size="sm"] button:not(.no-btn-scale) {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  padding-left: 0.7rem !important;
+  padding-right: 0.7rem !important;
+  font-size: 0.72rem !important;
+}
+html[data-btn-size="lg"] button:not(.no-btn-scale) {
+  padding-top: 0.72rem !important;
+  padding-bottom: 0.72rem !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Formato dos Botões (Quadrado Suave / Arredondado / Pílula) */
+html[data-btn-shape="sharp"] button:not(.rounded-full):not(.no-btn-shape) {
+  border-radius: 0.45rem !important;
+}
+html[data-btn-shape="pill"] button:not(.no-btn-shape) {
+  border-radius: 9999px !important;
+}
+
+/* Caixa Alta nos Botões */
+html[data-btn-upper="true"] button:not(.no-btn-upper) {
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Paleta Dinâmica de Destaque Principal (Accent Color) */
+html[data-accent="emerald"] {
+  --accent-amber: #10b981;
+  --accent-amber-hover: #059669;
+  --border-hover: rgba(16, 185, 129, 0.45);
+}
+html[data-accent="emerald"] .bg-amber-500 { background-color: #10b981 !important; color: #ffffff !important; }
+html[data-accent="emerald"] .hover\:bg-amber-400:hover { background-color: #059669 !important; }
+html[data-accent="emerald"] .text-amber-500,
+html[data-accent="emerald"] .text-amber-400 { color: #10b981 !important; }
+html[data-accent="emerald"].light .text-amber-500,
+html[data-accent="emerald"].light .text-amber-400,
+html[data-accent="emerald"].light .text-amber-300 { color: #047857 !important; }
+
+html[data-accent="sky"] {
+  --accent-amber: #0ea5e9;
+  --accent-amber-hover: #0284c7;
+  --border-hover: rgba(14, 165, 233, 0.45);
+}
+html[data-accent="sky"] .bg-amber-500 { background-color: #0ea5e9 !important; color: #ffffff !important; }
+html[data-accent="sky"] .hover\:bg-amber-400:hover { background-color: #0284c7 !important; }
+html[data-accent="sky"] .text-amber-500,
+html[data-accent="sky"] .text-amber-400 { color: #38bdf8 !important; }
+html[data-accent="sky"].light .text-amber-500,
+html[data-accent="sky"].light .text-amber-400,
+html[data-accent="sky"].light .text-amber-300 { color: #0369a1 !important; }
+
+html[data-accent="indigo"] {
+  --accent-amber: #6366f1;
+  --accent-amber-hover: #4f46e5;
+  --border-hover: rgba(99, 102, 241, 0.45);
+}
+html[data-accent="indigo"] .bg-amber-500 { background-color: #6366f1 !important; color: #ffffff !important; }
+html[data-accent="indigo"] .hover\:bg-amber-400:hover { background-color: #4f46e5 !important; }
+html[data-accent="indigo"] .text-amber-500,
+html[data-accent="indigo"] .text-amber-400 { color: #818cf8 !important; }
+html[data-accent="indigo"].light .text-amber-500,
+html[data-accent="indigo"].light .text-amber-400,
+html[data-accent="indigo"].light .text-amber-300 { color: #4338ca !important; }
+
+html[data-accent="rose"] {
+  --accent-amber: #f43f5e;
+  --accent-amber-hover: #e11d48;
+  --border-hover: rgba(244, 63, 94, 0.45);
+}
+html[data-accent="rose"] .bg-amber-500 { background-color: #f43f5e !important; color: #ffffff !important; }
+html[data-accent="rose"] .hover\:bg-amber-400:hover { background-color: #e11d48 !important; }
+html[data-accent="rose"] .text-amber-500,
+html[data-accent="rose"] .text-amber-400 { color: #fb7185 !important; }
+html[data-accent="rose"].light .text-amber-500,
+html[data-accent="rose"].light .text-amber-400,
+html[data-accent="rose"].light .text-amber-300 { color: #be123c !important; }
+
+html[data-accent="slate"] {
+  --accent-amber: #475569;
+  --accent-amber-hover: #334155;
+  --border-hover: rgba(100, 116, 139, 0.45);
+}
+html[data-accent="slate"] .bg-amber-500 { background-color: #334155 !important; color: #f8fafc !important; }
+html[data-accent="slate"] .hover\:bg-amber-400:hover { background-color: #1e293b !important; }
+html[data-accent="slate"] .text-amber-500,
+html[data-accent="slate"] .text-amber-400 { color: #cbd5e1 !important; }
+html[data-accent="slate"].light .text-amber-500,
+html[data-accent="slate"].light .text-amber-400,
+html[data-accent="slate"].light .text-amber-300 { color: #1e293b !important; }

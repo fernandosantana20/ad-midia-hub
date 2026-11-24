@@ -2,7 +2,7 @@
 // AD MÍDIA HUB — SERVICE WORKER OFFLINE-FIRST (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'ad-midia-hub-cache-v44-design-elegante-alto-contraste-modo-claro-escuro';
+const CACHE_NAME = 'ad-midia-hub-cache-v45-painel-config-sistema-exclusivo-dev';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
