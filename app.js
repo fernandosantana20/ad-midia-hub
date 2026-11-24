@@ -455,7 +455,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
           'modal-switch-user',
           'modal-scan-attendance',
           'modal-image-cropper',
-          'modal-adjust-schedule'
+          'modal-adjust-schedule',
+          'modal-install-pwa'
         ];
         modalIds.forEach(id => {
           const el = document.getElementById(id);
@@ -476,6 +477,142 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       syncFromCloud(true);
     }
   }, 20000);
+}
+
+// ============================================================================
+// INSTALAÇÃO DIRETA DO APP NO CELULAR (PWA — ANDROID 1-TOQUE & GUIA iOS)
+// ============================================================================
+
+let deferredPwaPrompt = null;
+let pwaBannerDismissed = false;
+try {
+  pwaBannerDismissed = localStorage.getItem('ad_midia_pwa_banner_dismissed') === '1';
+} catch (_) {}
+
+function isPwaInstalled() {
+  if (typeof window === 'undefined') return false;
+  const standaloneMedia = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
+  const iosStandalone = typeof window.navigator !== 'undefined' && window.navigator.standalone === true;
+  return Boolean(standaloneMedia || iosStandalone);
+}
+
+function isIosDevice() {
+  if (typeof navigator === 'undefined') return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    if (typeof renderApp === 'function' && !isUserEditingForm()) {
+      renderApp();
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    if (typeof showToast === 'function') {
+      showToast('🎉 Aplicativo instalado na tela inicial com sucesso!', 'emerald');
+    }
+    if (typeof renderApp === 'function') {
+      renderApp();
+    }
+  });
+}
+
+function dismissPwaBanner() {
+  pwaBannerDismissed = true;
+  try {
+    localStorage.setItem('ad_midia_pwa_banner_dismissed', '1');
+  } catch (_) {}
+  renderApp();
+}
+
+function closeInstallPwaModal() {
+  const modal = document.getElementById('modal-install-pwa');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function triggerInstallPwa() {
+  if (isPwaInstalled()) {
+    showToast('✅ O aplicativo já está instalado no seu aparelho!', 'emerald');
+    return;
+  }
+
+  // 1. Android / Chrome / Edge: Instalação nativa com 1 toque!
+  if (deferredPwaPrompt) {
+    try {
+      deferredPwaPrompt.prompt();
+      const choiceResult = await deferredPwaPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === 'accepted') {
+        showToast('📲 Instalando o aplicativo na sua tela inicial...', 'emerald');
+        deferredPwaPrompt = null;
+      } else {
+        showToast('Instalação cancelada. Você pode instalar quando quiser pelo botão no topo.', 'amber');
+      }
+      renderApp();
+      return;
+    } catch (err) {
+      console.warn('Prompt nativo PWA indisponível:', err);
+    }
+  }
+
+  // 2. iPhone / iPad (Safari) ou navegadores sem prompt automático: abre guia visual claro
+  const modal = document.getElementById('modal-install-pwa');
+  const box = document.getElementById('install-pwa-instructions');
+  if (!modal || !box) {
+    showToast('No menu do navegador, toque em "Instalar aplicativo" ou "Adicionar à tela inicial".', 'amber');
+    return;
+  }
+
+  const cfg = getSystemConfig();
+  const appName = escapeHTML(cfg.appName || 'AD MÍDIA HUB');
+
+  if (isIosDevice()) {
+    box.innerHTML = `
+      <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 font-semibold">
+        📱 No <strong>iPhone / iPad (Safari)</strong>, siga os 3 passos abaixo para instalar o <strong>${appName}</strong>:
+      </div>
+      <ol class="space-y-2.5 pl-1">
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shrink-0">1</span>
+          <span>Toque no botão <strong>Compartilhar</strong> (ícone de quadrado com seta para cima <strong>↑</strong>) na barra inferior do Safari.</span>
+        </li>
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shrink-0">2</span>
+          <span>Role as opções para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.</span>
+        </li>
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">3</span>
+          <span>Toque em <strong>"Adicionar"</strong> no canto superior direito. Pronto! O ícone aparecerá junto aos seus apps.</span>
+        </li>
+      </ol>
+    `;
+  } else {
+    box.innerHTML = `
+      <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 font-semibold">
+        🤖 No <strong>Android (Google Chrome)</strong> ou <strong>Computador</strong>, instale o <strong>${appName}</strong> em segundos:
+      </div>
+      <ol class="space-y-2.5 pl-1">
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shrink-0">1</span>
+          <span>Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito do Google Chrome.</span>
+        </li>
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center shrink-0">2</span>
+          <span>Selecione <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</span>
+        </li>
+        <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+          <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">3</span>
+          <span>Confirme em <strong>"Instalar"</strong>. O aplicativo abrirá em tela cheia como app nativo!</span>
+        </li>
+      </ol>
+    `;
+  }
+
+  modal.classList.remove('hidden');
+  if (window.lucide) window.lucide.createIcons();
 }
 
 // ============================================================================
@@ -6096,95 +6233,108 @@ function renderHeader() {
     ? `<img src="${escapeHTML(cfg.logoDataUrl)}" alt="${escapeHTML(cfg.appName)}" class="w-full h-full object-contain rounded-xl p-0.5" />`
     : `<i data-lucide="flame" class="w-6 h-6 text-amber-400"></i>`;
 
+  const showInstallBtn = !isPwaInstalled();
+
   return `
-    <header class="sticky top-0 z-30 border-b backdrop-blur-md shadow-md">
-      <div class="app-screen-container py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <header class="md:sticky md:top-0 z-30 border-b backdrop-blur-md shadow-md">
+      <div class="app-screen-container py-3 sm:py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
         
         <!-- Brand Identity -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3.5">
-            <div class="relative w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm overflow-visible">
+        <div class="flex items-center justify-between gap-2 min-w-0">
+          <div class="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div class="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-sm overflow-visible shrink-0">
               ${brandLogoHtml}
-              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[var(--bg-deep)]"></span>
+              <span class="absolute -bottom-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-400 border-2 border-[var(--bg-deep)]"></span>
             </div>
-            <div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-display font-extrabold text-lg sm:text-xl tracking-tight text-amber-500 dark:text-amber-400">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span class="font-display font-extrabold text-base sm:text-xl tracking-tight text-amber-500 dark:text-amber-400 truncate">
                   ${escapeHTML(cfg.appName || 'AD MÍDIA HUB')}
                 </span>
                 ${cfg.churchName ? `
-                  <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full badge-theme-amber">
+                  <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full badge-theme-amber">
                     ${escapeHTML(cfg.churchName)}
                   </span>
                 ` : ''}
                 ${cloudBadge}
               </div>
-              <p class="text-xs text-slate-400">${escapeHTML(cfg.appSubtitle || 'Gestão de Escalas, Produção & Comunicação')}</p>
+              <p class="text-[11px] sm:text-xs text-slate-400 truncate">${escapeHTML(cfg.appSubtitle || 'Gestão de Escalas, Produção & Comunicação')}</p>
             </div>
           </div>
 
           <!-- Mobile Quick Actions -->
-          <div class="flex items-center gap-2 lg:hidden">
+          <div class="flex items-center gap-1.5 lg:hidden shrink-0">
+            ${showInstallBtn ? `
+              <button
+                type="button"
+                onclick="triggerInstallPwa()"
+                title="Instalar App direto no celular"
+                class="no-btn-scale flex items-center gap-1 px-2.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-[11px] font-extrabold shadow-sm transition">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Instalar</span>
+              </button>
+            ` : ''}
             <button
+              type="button"
               onclick="toggleTheme()"
               title="${state.theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}"
-              class="p-2 rounded-xl border border-slate-700/80 hover:bg-slate-800/80 text-amber-400 transition">
+              class="no-btn-scale p-2 rounded-xl border border-slate-700/80 hover:bg-slate-800/80 text-amber-400 transition">
               <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-4 h-4"></i>
             </button>
-            <button onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="p-2 rounded-xl border border-slate-700/80 text-slate-300 hover:bg-slate-800">
+            <button type="button" onclick="syncFromCloud(false)" title="Sincronizar com Banco em Nuvem" class="no-btn-scale p-2 rounded-xl border border-slate-700/80 text-slate-300 hover:bg-slate-800">
               <i data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
         <!-- Mode Switcher & User Identity -->
-        <div class="flex flex-wrap items-center justify-between sm:justify-end gap-3">
+        <div class="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3">
           
           ${canManage ? `
             <!-- Role Selector Pill (Only visible to Developer / Director / Leader) -->
-            <div class="flex items-center p-1 rounded-2xl bg-slate-900/90 border border-slate-800">
+            <div class="grid grid-cols-2 sm:flex items-center p-1 rounded-2xl bg-slate-900/90 border border-slate-800 w-full sm:w-auto">
               <button
                 onclick="setMode('director')"
-                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                class="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   isDirector
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }">
-                <i data-lucide="shield-check" class="w-4 h-4"></i>
-                <span>Visão da Liderança</span>
+                <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i>
+                <span class="truncate">Liderança</span>
                 ${swapAlerts > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white">${swapAlerts}</span>` : ''}
               </button>
 
               <button
                 onclick="setMode('team')"
-                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                class="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   !isDirector
                     ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
                     : 'text-slate-400 hover:text-white'
                 }">
-                <i data-lucide="user-check" class="w-4 h-4"></i>
-                <span>Visão da Equipe</span>
+                <i data-lucide="user-check" class="w-4 h-4 shrink-0"></i>
+                <span class="truncate">Equipe</span>
               </button>
             </div>
           ` : `
             <!-- Locked Privacy Badge for Regular Team Members -->
-            <div class="flex items-center gap-2 px-3.5 py-2 rounded-2xl badge-theme-cyan text-xs font-bold">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-2xl badge-theme-cyan text-xs font-bold">
               <i data-lucide="lock" class="w-3.5 h-3.5"></i>
               <span>Acesso Individual Privado</span>
             </div>
           `}
 
           <!-- Logged User Box -->
-          <div class="flex items-center gap-2.5 bg-slate-900/80 border border-slate-800/90 rounded-2xl px-3 py-1.5">
+          <div class="flex items-center gap-2 sm:gap-2.5 bg-slate-900/80 border border-slate-800/90 rounded-2xl px-2.5 sm:px-3 py-1.5 w-full sm:w-auto min-w-0">
             ${renderMemberAvatar(activeMember, 'w-8 h-8 rounded-xl text-[11px]', true)}
-            <div class="text-left">
-              <label class="block text-[10px] uppercase tracking-wider text-emerald-400 leading-none">
+            <div class="text-left min-w-0 flex-1">
+              <label class="block text-[10px] uppercase tracking-wider text-emerald-400 leading-none truncate">
                 ${escapeHTML(activeMember?.email || 'Conta Gmail')}
               </label>
               ${canManage ? `
                 <select
                   onchange="setActiveMember(this.value)"
-                  class="bg-transparent text-xs font-semibold text-slate-100 focus:outline-none cursor-pointer pr-2">
+                  class="bg-transparent text-xs font-semibold text-slate-100 focus:outline-none cursor-pointer pr-1 w-full max-w-[190px] sm:max-w-[220px] truncate">
                   ${state.members.map(m => `
                     <option value="${m.id}" class="bg-slate-900 text-slate-100" ${m.id === state.activeMemberId ? 'selected' : ''}>
                       ${escapeHTML(m.name)} (${getRoleTypeLabel(m.roleType)})
@@ -6192,7 +6342,7 @@ function renderHeader() {
                   `).join('')}
                 </select>
               ` : `
-                <div class="text-xs font-bold text-white pr-1">
+                <div class="text-xs font-bold text-white pr-1 truncate">
                   ${escapeHTML(activeMember?.name)}
                 </div>
               `}
@@ -6200,29 +6350,41 @@ function renderHeader() {
             <button
               onclick="openMemberModal('${activeMember?.id || 'm1'}')"
               title="Editar Meu Perfil & Foto"
-              class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 transition">
+              class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 transition shrink-0">
               <i data-lucide="user-cog" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">Meu Perfil</span>
             </button>
             <button
               onclick="logoutGmail()"
               title="Sair da conta Gmail"
-              class="p-1.5 rounded-lg bg-slate-800/90 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition">
+              class="p-1.5 rounded-lg bg-slate-800/90 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition shrink-0">
               <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
             </button>
           </div>
 
-          <!-- Theme Switcher (Claro & Escuro com cores humanas) -->
+          ${showInstallBtn ? `
+            <!-- Botão Instalar App (Desktop / Tablet) -->
+            <button
+              type="button"
+              onclick="triggerInstallPwa()"
+              title="Instalar aplicativo direto no dispositivo"
+              class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-bold shadow-sm transition">
+              <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+              <span>Instalar App</span>
+            </button>
+          ` : ''}
+
+          <!-- Theme Switcher (Desktop) -->
           <button
             onclick="toggleTheme()"
             title="${state.theme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}"
-            class="flex items-center gap-1.5 px-3 py-2 rounded-xl border transition shadow-sm ${
+            class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl border transition shadow-sm ${
               state.theme === 'dark'
                 ? 'border-slate-800/90 bg-slate-900/80 text-amber-300 hover:border-amber-500/40'
                 : 'border-slate-200 bg-slate-100/90 text-slate-700 hover:border-amber-500/50 hover:bg-slate-200/80'
             }">
             <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-3.5 h-3.5 ${state.theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}"></i>
-            <span class="text-xs font-bold hidden sm:inline">${state.theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+            <span class="text-xs font-bold">${state.theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
           </button>
 
           <button
@@ -9999,24 +10161,92 @@ function renderApp() {
     mainContent = renderSystemSettingsTab();
   }
 
+  const loggedUser = getLoggedInUser();
   const effectiveUser = getEffectiveUser();
+  const canManage = isPrivilegedUser(loggedUser) || isPrivilegedUser(effectiveUser);
   const canMark = canMarkAttendanceUser(effectiveUser);
+  const isDev = isDeveloperUser(loggedUser);
+  const cfg = getSystemConfig();
+  const showMobileInstallBanner = !isPwaInstalled() && !pwaBannerDismissed;
+
+  const mobileNavItems = [
+    { id: 'my_area', label: 'Perfil', icon: 'smartphone' },
+    { id: 'schedules', label: 'Escalas', icon: 'calendar-check-2' },
+    canManage
+      ? { id: 'members', label: 'Equipe', icon: 'users' }
+      : { id: 'roles', label: 'Funções', icon: 'layers' },
+    { id: 'attendance', label: 'QR Code', icon: 'qr-code' },
+    isDev
+      ? { id: 'system_settings', label: 'Config', icon: 'settings' }
+      : { id: 'ranking', label: 'Destaques', icon: 'trophy' }
+  ];
 
   root.innerHTML = `
     ${renderHeader()}
-    <main class="app-screen-container py-6 pb-24">
+    <main class="app-screen-container py-4 sm:py-6 pb-28 md:pb-16">
+      ${showMobileInstallBanner ? `
+        <div class="sm:hidden mb-4 p-3.5 rounded-2xl glass-panel border border-amber-500/35 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <i data-lucide="smartphone" class="w-4 h-4"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-extrabold text-white truncate">Instalar ${escapeHTML(cfg.appName || 'AD MÍDIA HUB')}</div>
+              <div class="text-[11px] text-slate-400 truncate">Abra direto da tela inicial do celular</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onclick="triggerInstallPwa()"
+              class="no-btn-scale px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-extrabold text-[11px] shadow-sm transition">
+              Instalar
+            </button>
+            <button
+              type="button"
+              onclick="dismissPwaBanner()"
+              aria-label="Fechar aviso"
+              class="no-btn-scale p-1.5 rounded-lg text-slate-400 hover:text-white">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      ` : ''}
       ${mainContent}
     </main>
 
     ${canMark ? `
-      <!-- Botão Flutuante Mobile: Marcar Frequência QR Code -->
+      <!-- Botão Flutuante Mobile: Marcar Frequência QR Code (acima da barra inferior) -->
       <button
         onclick="openScanAttendanceModal()"
         title="Marcar Frequência QR Code com a Câmera"
-        class="sm:hidden fixed bottom-6 right-5 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-xl active:scale-90 transition border-2 border-emerald-400">
+        aria-label="Marcar Frequência QR Code"
+        class="no-btn-scale no-btn-shape md:hidden fixed bottom-24 right-4 z-40 w-13 h-13 p-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-xl active:scale-90 transition border-2 border-emerald-400">
         <i data-lucide="scan-line" class="w-6 h-6"></i>
       </button>
     ` : ''}
+
+    <!-- Barra de Navegação Inferior Fixa no Celular (App Nativo) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 mobile-bottom-nav">
+      <div class="grid grid-cols-5 items-center px-1.5 py-1.5">
+        ${mobileNavItems.map(item => {
+          const isActive = state.activeTab === item.id;
+          return `
+            <button
+              type="button"
+              onclick="setActiveTab('${item.id}')"
+              class="no-btn-scale no-btn-shape no-btn-upper flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-xl transition ${
+                isActive
+                  ? 'text-amber-400 bg-amber-500/10 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 font-medium'
+              }">
+              <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+              <span class="text-[10px] leading-tight truncate max-w-full">${item.label}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </nav>
   `;
 
   if (window.lucide) {
